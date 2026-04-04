@@ -8,9 +8,14 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userType, setUserType] = useState('seeker'); // 'seeker' or 'landlord'
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.email || !form.password) {
+      setError('Email and password are required');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -28,47 +33,160 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <h2>Login</h2>
-        <p>Welcome back to HouseHunt KE</p>
+    <main className="flex min-h-[calc(100vh-64px)] overflow-hidden mt-16 bg-surface">
+      {/* Left Side: Login Form */}
+      <section className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-surface py-12 overflow-y-auto">
+        <div className="max-w-md w-full mx-auto">
+          <div className="mb-12">
+            <h1 className="font-headline text-3xl font-extrabold tracking-tighter text-primary mb-2">Modern Estate</h1>
+            <p className="text-on-surface-variant font-medium">Secure Portal for Seekers & Landlords</p>
+          </div>
+          
+          <div className="space-y-8">
+            {/* Toggle Switch */}
+            <div className="flex p-1 bg-surface-container-low rounded-xl">
+              <button 
+                type="button"
+                onClick={() => setUserType('seeker')}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                  userType === 'seeker' 
+                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                    : 'text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                Property Seeker
+              </button>
+              <button 
+                type="button"
+                onClick={() => setUserType('landlord')}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                  userType === 'landlord' 
+                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                    : 'text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                Verified Landlord
+              </button>
+            </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Divider (Visual only, replacing M-Pesa login option for actual email login) */}
+              {userType === 'seeker' && (
+                <div className="relative flex items-center py-2">
+                  <div className="flex-grow border-t border-surface-container-highest"></div>
+                  <span className="flex-shrink mx-4 text-xs font-bold text-outline-variant uppercase">Sign In Options</span>
+                  <div className="flex-grow border-t border-surface-container-highest"></div>
+                </div>
+              )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-              placeholder="you@example.com"
-            />
+              {error && (
+                <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1">Email Address</label>
+                  <input 
+                    className="w-full px-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary text-on-surface placeholder:text-outline transition-all" 
+                    placeholder="name@example.com" 
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1">Password</label>
+                  <input 
+                    className="w-full px-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary text-on-surface placeholder:text-outline transition-all" 
+                    placeholder="••••••••" 
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  />
+                </div>
+
+
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <label className="flex items-center space-x-2 cursor-pointer group">
+                  <input className="rounded-lg border-outline-variant text-primary focus:ring-primary w-5 h-5 transition-all outline-none" type="checkbox" />
+                  <span className="text-sm text-on-surface-variant group-hover:text-on-surface">Remember me</span>
+                </label>
+                <Link to="#" className="text-sm font-semibold text-primary hover:text-primary-container transition-colors">Forgot Password?</Link>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-full shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                <span>{loading ? 'Authenticating...' : 'Continue to Dashboard'}</span>
+                {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
+              </button>
+            </form>
+            
+            <p className="text-center text-on-surface-variant text-sm mt-6">
+              New to Modern Estate? 
+              <Link to="/register" className="text-tertiary font-bold hover:underline decoration-2 underline-offset-4 ml-1">Register for an account</Link>
+            </p>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-              placeholder="••••••••"
-            />
+          <div className="mt-16 pt-8 border-t border-surface-container-low flex flex-wrap gap-4 justify-center">
+            <p className="text-[10px] text-outline uppercase tracking-widest w-full text-center mb-2">Secure Integrations</p>
+            <div className="flex items-center space-x-1 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
+              <span className="material-symbols-outlined text-sm">verified_user</span>
+              <span className="text-[10px] font-bold">KRA COMPLIANT</span>
+            </div>
+            <div className="flex items-center space-x-1 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
+              <span className="material-symbols-outlined text-sm">payments</span>
+              <span className="text-[10px] font-bold">M-PESA READY</span>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="auth-footer">
-          Don't have an account? <Link to="/register">Register</Link>
-        </p>
-      </div>
-    </div>
+      {/* Right Side: Imagery & Welcome Message */}
+      <section className="hidden lg:flex w-1/2 relative bg-primary items-end p-16 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img 
+            className="w-full h-full object-cover" 
+            alt="Modern architectural villa in Nairobi" 
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4du5sza5RaEbLadMAOgXj1ANsAd6NwAP_yF1QXxsvI4KJ7yKMAVF0CoMGJSj0SnmrncEFkKwsnHOSx5xT6aXLjWYqe_vTxAMXztmT0VZdgJeZLQxLwoFbsiHvuWbo4cq3FElM1BLxCuokJNj5ZYqAnbMzWjM7ShCdD4IIxD9eRUdspHQaFsh1pkjiYb6HlGqzza0Ak2NTqIi-YV2zWrck95IoKbZRqiIWzkJHfjV1WzYYTIn4fuorBJlMo_BoRPesXU1mYlyHHpI"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/40 to-transparent"></div>
+        </div>
+        
+        <div className="relative z-10 w-full max-w-lg">
+          <div className="mb-12 inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white text-sm font-medium">
+            <span className="material-symbols-outlined mr-2 text-secondary-container" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
+            Your Personal Curator Awaits
+          </div>
+          <h2 className="font-headline text-5xl font-extrabold text-white leading-[1.1] mb-6 tracking-tight">
+            Finding home is now as simple as a <span className="text-secondary-fixed">conversation.</span>
+          </h2>
+          <p className="text-primary-fixed/80 text-lg mb-10 leading-relaxed font-light">
+            Experience the future of Kenyan real estate. Our AI curator filters through verified listings to find exactly what matches your lifestyle.
+          </p>
+          
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-2xl flex items-start space-x-4">
+            <div className="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-on-secondary-container">smart_toy</span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-white font-bold text-sm">Savanna Assistant</p>
+              <p className="text-white/80 text-sm italic">"I've found 3 penthouses in Westlands with M-Pesa booking enabled. Would you like to see the floor plans?"</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="absolute top-12 right-12 w-32 h-32 border border-white/5 rounded-full pointer-events-none"></div>
+        <div className="absolute top-24 right-24 w-48 h-48 border border-white/5 rounded-full pointer-events-none"></div>
+      </section>
+    </main>
   );
 }

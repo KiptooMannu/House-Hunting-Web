@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendMessage, resetSession } = require('../controllers/chatbotController');
+const { sendMessage, resetSession } = require('./chatbot.controller');
 
 // POST /api/chatbot/message - Send message to chatbot (Public)
 router.post('/message', sendMessage);

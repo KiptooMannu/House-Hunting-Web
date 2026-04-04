@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getAllHouses, getHouseById, createHouse, updateHouse, deleteHouse,
-} = require('../controllers/houseController');
+} = require('./houses.controller');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/role');
 const multer = require('multer');

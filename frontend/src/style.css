@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --text: #111827;
   --text-h: #111827;
@@ -731,6 +735,15 @@ html, body {
   }
 }
 
+@media (max-width: 600px) {
+  .filter-bar {
+    grid-template-columns: 1fr;
+  }
+  .filter-bar button {
+    width: 100%;
+  }
+}
+
 /* House details */
 .house-detail {
   display: grid;
@@ -1304,6 +1317,20 @@ html, body {
   font-weight: 600;
 }
 
+/* Full-width landlord dashboard layout */
+.landlord-dashboard-full {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px 18px;
+  background: var(--bg);
+}
+
+.landlord-dashboard-full h1 {
+  margin-bottom: 24px;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
 /* Dashboard row for side-by-side layout */
 .dashboard-row {
   display: flex;
@@ -1329,6 +1356,26 @@ html, body {
   .admin-dashboard-full {
     padding: 16px 12px;
   }
+  
+  .landlord-dashboard-full {
+    padding: 16px 12px;
+  }
 }
 
-
+@media (max-width: 480px) {
+  .dashboard-row {
+    flex-direction: column;
+  }
+  
+  .dashboard-col {
+    min-width: 100%;
+  }
+  
+  .admin-dashboard-full {
+    padding: 12px 8px;
+  }
+  
+  .landlord-dashboard-full {
+    padding: 12px 8px;
+  }
+}

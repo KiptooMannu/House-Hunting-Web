@@ -6,7 +6,7 @@ const {
   getComplianceLogById,
   sendRevenueToGava,
   submitNilFiling,
-} = require('../controllers/complianceController');
+} = require('./compliance.controller');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/role');
 

@@ -2,26 +2,43 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { sequelize } = require('./models');
 const errorHandler = require('./middleware/errorHandler');
 
 // Import routes
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const houseRoutes = require('./routes/houseRoutes');
-const bookingRoutes = require('./routes/bookingRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const complianceRoutes = require('./routes/complianceRoutes');
-const chatbotRoutes = require('./routes/chatbotRoutes');
+const authRoutes = require('./auth/auth.router');
+const userRoutes = require('./users/users.router');
+const houseRoutes = require('./houses/houses.router');
+const bookingRoutes = require('./bookings/bookings.router');
+const paymentRoutes = require('./payments/payments.router');
+const complianceRoutes = require('./compliance/compliance.router');
+const chatbotRoutes = require('./chatbot/chatbot.router');
 
 const app = express();
+
+// Set up Global Security HTTP Headers
+app.use(helmet({
+  crossOriginResourcePolicy: false, // Ensure images loaded via URL don't get blocked
+}));
+
+// Apply global rate limiter to prevent DoS attacks
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 API requests per `window`
+  message: { success: false, message: 'Too many requests originating from this IP, please try again after 15 minutes.' }
+});
+app.use('/api', globalLimiter);
 
 // --------------- Middleware ---------------
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

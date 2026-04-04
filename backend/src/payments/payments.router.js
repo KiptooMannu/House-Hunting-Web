@@ -7,7 +7,7 @@ const {
   initiateStkPush,
   mpesaCallback,
   getRevenueStats,
-} = require('../controllers/paymentController');
+} = require('./payments.controller');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/role');
 

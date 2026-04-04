@@ -1,6 +1,6 @@
 const { Op, fn, col } = require('sequelize');
 const { ComplianceLog, Payment, Booking, House, User, sequelize } = require('../models');
-const gavaService = require('../services/gavaService');
+const gavaService = require('./gava.service');
 
 // ===================== Simulation Helper =====================
 

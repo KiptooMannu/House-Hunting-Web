@@ -5,7 +5,7 @@
  */
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const { sequelize, User } = require('../models');
+const { sequelize, User } = require('../src/models');
 
 const ADMIN_DATA = {
   name: 'System Admin',

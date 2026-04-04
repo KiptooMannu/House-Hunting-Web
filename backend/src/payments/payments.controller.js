@@ -1,6 +1,6 @@
 const { Op, fn, col, literal } = require('sequelize');
 const { Payment, Booking, House, User, sequelize } = require('../models');
-const mpesaService = require('../services/mpesaService');
+const mpesaService = require('./mpesa.service');
 
 // ===================== Simulation Helpers =====================
 
