@@ -15,8 +15,13 @@ export const addImage = async (c: Context) => {
     const result = await imageService.addImage(data);
     return c.json(result, 201);
   } catch (error: any) {
-    if (error.name === 'ZodError')
+    if (error.name === 'ZodError') {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
+    // Handle duplicate error
+    if (error.message === 'Image already exists for this house') {
+      return c.json({ error: error.message }, 409);
+    }
     return c.json({ error: error.message }, 400);
   }
 };
@@ -38,8 +43,9 @@ export const listImagesByHouse = async (c: Context) => {
     const images = await imageService.listImagesByHouse(houseId);
     return c.json(images, 200);
   } catch (error: any) {
-    if (error.name === 'ZodError')
+    if (error.name === 'ZodError') {
       return c.json({ error: 'Invalid house ID' }, 400);
+    }
     return c.json({ error: error.message }, 500);
   }
 };
@@ -52,8 +58,9 @@ export const updateImage = async (c: Context) => {
     if (!updated) return c.json({ error: 'Image not found' }, 404);
     return c.json(updated, 200);
   } catch (error: any) {
-    if (error.name === 'ZodError')
+    if (error.name === 'ZodError') {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    }
     return c.json({ error: error.message }, 400);
   }
 };
@@ -69,7 +76,7 @@ export const deleteImage = async (c: Context) => {
   }
 };
 
-// NEW: Upload image to Cloudinary
+// Upload image to Cloudinary (multipart/form-data)
 export const uploadHouseImage = async (c: Context) => {
   try {
     const body = await c.req.parseBody();
@@ -110,6 +117,9 @@ export const uploadHouseImage = async (c: Context) => {
     return c.json(newImage, 201);
   } catch (error: any) {
     console.error('Upload failed:', error);
+    if (error.message === 'Image already exists for this house') {
+      return c.json({ error: error.message }, 409);
+    }
     return c.json({ error: error.message || 'Upload failed' }, 500);
   }
 };

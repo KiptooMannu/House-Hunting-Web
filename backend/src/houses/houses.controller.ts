@@ -44,6 +44,34 @@ export const createHouse = async (c: Context) => {
   }
 };
 
+// ✅ Add this missing function
+export const getHouse = async (c: Context) => {
+  try {
+    const { houseId } = houseIdParam.parse(c.req.param());
+    const house = await houseService.getHouse(houseId);
+    if (!house) return c.json({ error: 'House not found' }, 404);
+    return c.json(house, 200);
+  } catch (error: any) {
+    console.error('❌ [getHouse] Error:', error);
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+// ✅ Add this missing function
+export const listHouses = async (c: Context) => {
+  try {
+    const query = houseListQuery.parse(c.req.query());
+    const result = await houseService.listHouses(query);
+    return c.json(result, 200);
+  } catch (error: any) {
+    console.error('❌ [listHouses] Error:', error);
+    if (error.name === 'ZodError') {
+      return c.json({ error: 'Invalid query', details: error.errors }, 400);
+    }
+    return c.json({ error: error.message }, 500);
+  }
+};
+
 export const updateHouse = async (c: Context) => {
   try {
     const { houseId } = houseIdParam.parse(c.req.param());
