@@ -1,4 +1,3 @@
-// src/modules/auth/auth.router.ts
 import { Hono } from 'hono';
 import {
   login,
@@ -7,12 +6,17 @@ import {
   adminResetPassword,
   refreshToken,
 } from './auth.controller.js';
+import { authMiddleware, adminMiddleware } from '../middleware/authMiddleware.js';
 
 export const authRouter = new Hono();
 
-// Public routes (no restrictions)
+// Public routes (no authentication)
 authRouter.post('/login', login);
 authRouter.post('/refresh', refreshToken);
-authRouter.post('/change-password', changePassword);
-authRouter.post('/users', adminCreateUser);
-authRouter.post('/users/:userId/reset-password', adminResetPassword);
+
+// Protected routes (require valid access token)
+authRouter.post('/change-password', authMiddleware, changePassword);
+
+// Admin-only routes (require authentication + admin role)
+authRouter.post('/users', authMiddleware, adminMiddleware, adminCreateUser);
+authRouter.post('/users/:userId/reset-password', authMiddleware, adminMiddleware, adminResetPassword);

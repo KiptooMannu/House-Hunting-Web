@@ -195,7 +195,7 @@ export const idParamSchema = z.object({ id: z.string().transform((val: string) =
 // ============================================================
 export const createUserSchema = userSchema.omit({ totalBookings: true, totalListings: true, lastLoginAt: true });
 export const createLocationSchema = locationSchema;
-export const createHouseSchema = houseSchema.omit({ viewCount: true, bookingCount: true, isVerified: true, verifiedAt: true });
+export const createHouseSchema = houseSchema.omit({ viewCount: true, bookingCount: true, isVerified: true, verifiedAt: true, landlordId: true });
 export const createHouseImageSchema = houseImageSchema;
 export const createChatbotSessionSchema = chatbotSessionSchema.omit({ startedAt: true, lastActivityAt: true });
 export const createBookingSchema = bookingSchema.omit({ status: true, confirmedAt: true, cancelledAt: true });

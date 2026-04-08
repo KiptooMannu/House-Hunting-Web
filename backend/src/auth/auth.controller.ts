@@ -10,7 +10,7 @@ import {
 import {
   loginSchema,
   changePasswordSchema,
-  createUserSchema,
+  adminCreateUserSchema,        // 👈 use the admin-specific schema
   refreshTokenSchema,
   resetPasswordParams,
 } from '../validators/validators.js';
@@ -59,7 +59,7 @@ export const changePassword = async (c: Context) => {
 export const adminCreateUser = async (c: Context) => {
   try {
     const body = await c.req.json();
-    const data = createUserSchema.parse(body);
+    const data = adminCreateUserSchema.parse(body);   // 👈 changed
     console.log('🔐 [AdminCreateUser] Creating user:', data.email);
 
     const result = await adminCreateUserService(data);
@@ -104,4 +104,4 @@ export const refreshToken = async (c: Context) => {
     }
     return c.json({ error: error.message }, 401);
   }
-};
+};  
