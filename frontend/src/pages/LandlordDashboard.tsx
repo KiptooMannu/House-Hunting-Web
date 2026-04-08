@@ -20,6 +20,15 @@ export default function LandlordDashboard() {
   });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   
+  // Edit & Delete state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '', rent: '', county: '', location_name: '', bedrooms: '1', bathrooms: '1', amenities: '',
+  });
+  const [editing, setEditing] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  
   const imagePreviews = useMemo(
     () => imageFiles.map((f) => ({ file: f, url: URL.createObjectURL(f) })),
     [imageFiles]
@@ -113,6 +122,56 @@ export default function LandlordDashboard() {
        setError(err?.response?.data?.message || 'Failed to create house listing.');
     } finally {
       setCreating(false);
+    }
+  }
+
+  function startEditingHouse(house: any) {
+    setEditingId(house.id);
+    setEditForm({
+      title: house.title || '',
+      rent: String(house.rent || ''),
+      county: house.county || '',
+      location_name: house.location_name || '',
+      bedrooms: String(house.bedrooms || '1'),
+      bathrooms: String(house.bathrooms || '1'),
+      amenities: (Array.isArray(house.amenities) ? house.amenities : []).join(', '),
+    });
+  }
+
+  async function handleUpdateHouse() {
+    if (!editingId) return;
+    setError('');
+    setEditing(true);
+    try {
+      await api.put(`/houses/${editingId}`, {
+        title: editForm.title,
+        rent: Number(editForm.rent),
+        county: editForm.county,
+        location_name: editForm.location_name,
+        bedrooms: Number(editForm.bedrooms),
+        bathrooms: Number(editForm.bathrooms),
+        amenities: editForm.amenities.split(',').map(a => a.trim()).filter(Boolean),
+      });
+      await fetchHouses();
+      setEditingId(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to update house.');
+    } finally {
+      setEditing(false);
+    }
+  }
+
+  async function handleDeleteHouse(houseId: number) {
+    setError('');
+    setDeleting(true);
+    try {
+      await api.delete(`/houses/${houseId}`);
+      await fetchHouses();
+      setDeleteConfirmId(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to delete house.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -349,6 +408,7 @@ export default function LandlordDashboard() {
                           <th className="px-6 py-2 font-semibold">Location</th>
                           <th className="px-6 py-2 font-semibold">Status</th>
                           <th className="px-6 py-2 font-semibold">Rent/Month</th>
+                          <th className="px-6 py-2 font-semibold">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="text-sm">
@@ -382,7 +442,23 @@ export default function LandlordDashboard() {
                                 {h.approval_status || 'Pending'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 font-bold text-primary rounded-r-xl">{formatCurrency(h.rent)}</td>
+                            <td className="px-6 py-4 font-bold text-primary">{formatCurrency(h.rent)}</td>
+                            <td className="px-6 py-4 rounded-r-xl">
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => startEditingHouse(h)}
+                                  className="text-[10px] bg-primary-container text-on-primary-container px-3 py-1.5 rounded font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  onClick={() => setDeleteConfirmId(h.id)}
+                                  className="text-[10px] bg-error-container text-on-error-container px-3 py-1.5 rounded font-bold uppercase tracking-widest hover:bg-error hover:text-white transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -424,6 +500,164 @@ export default function LandlordDashboard() {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Edit House Modal */}
+          {editingId && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-primary/40 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+                <div className="p-8 sticky top-0 bg-white border-b border-outline-variant/20 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-headline font-bold text-primary">Edit Property</h3>
+                    <p className="text-xs text-on-surface-variant font-medium mt-1">Update property details</p>
+                  </div>
+                  <button 
+                    onClick={() => setEditingId(null)}
+                    className="text-on-surface-variant hover:bg-surface-container-high p-1 rounded-full transition-colors"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                
+                <div className="p-8 space-y-6">
+                  {error && (
+                    <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Listing Title</label>
+                      <input 
+                        className="w-full bg-surface-container-high border-none rounded-lg px-4 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                        placeholder="Property Title"
+                        value={editForm.title}
+                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Listing Price (KSh)</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">KSh</span>
+                        <input 
+                          type="number" 
+                          min="0"
+                          className="w-full bg-surface-container-high border-none rounded-lg pl-14 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                          placeholder="0.00"
+                          value={editForm.rent}
+                          onChange={(e) => setEditForm({ ...editForm, rent: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Primary Location</label>
+                      <input 
+                        className="w-full bg-surface-container-high border-none rounded-lg px-4 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                        placeholder="e.g. Riverside Drive, Nairobi"
+                        value={editForm.location_name}
+                        onChange={(e) => setEditForm({ ...editForm, location_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">County</label>
+                      <input 
+                        className="w-full bg-surface-container-high border-none rounded-lg px-4 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                        placeholder="Nairobi"
+                        value={editForm.county}
+                        onChange={(e) => setEditForm({ ...editForm, county: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Bedrooms</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        className="w-full bg-surface-container-high border-none rounded-lg px-4 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                        value={editForm.bedrooms}
+                        onChange={(e) => setEditForm({ ...editForm, bedrooms: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Bathrooms</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        className="w-full bg-surface-container-high border-none rounded-lg px-4 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                        value={editForm.bathrooms}
+                        onChange={(e) => setEditForm({ ...editForm, bathrooms: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Amenities (CSV)</label>
+                      <input 
+                        className="w-full bg-surface-container-high border-none rounded-lg px-4 py-4 focus:ring-2 focus:ring-primary transition-all font-medium text-primary" 
+                        placeholder="WiFi, Pool, Garage"
+                        value={editForm.amenities}
+                        onChange={(e) => setEditForm({ ...editForm, amenities: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-6 border-t border-outline-variant/20">
+                    <button 
+                      onClick={() => setEditingId(null)}
+                      className="flex-1 text-on-surface-variant font-bold py-3 rounded-lg hover:bg-surface-container-high transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleUpdateHouse}
+                      disabled={editing}
+                      className="flex-1 bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-container transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {editing ? 'Saving...' : 'Save Changes'}
+                      {!editing && <span className="material-symbols-outlined text-lg">check</span>}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {deleteConfirmId && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="material-symbols-outlined text-3xl">delete_outline</span>
+                  </div>
+                  <h3 className="text-xl font-headline font-bold text-primary mb-2">Delete Property?</h3>
+                  <p className="text-sm text-on-surface-variant mb-8">
+                    This action cannot be undone. All bookings associated with this property will be cancelled.
+                  </p>
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setDeleteConfirmId(null)}
+                      disabled={deleting}
+                      className="flex-1 text-on-surface-variant font-bold py-3 rounded-lg hover:bg-surface-container-high transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteHouse(deleteConfirmId)}
+                      disabled={deleting}
+                      className="flex-1 bg-error text-white font-bold py-3 rounded-lg hover:bg-error-dark transition-colors disabled:opacity-50"
+                    >
+                      {deleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
         </section>
