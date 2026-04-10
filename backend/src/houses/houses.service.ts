@@ -113,3 +113,12 @@ export const deleteHouse = async (houseId: number) => {
   const [deleted] = await db.delete(houses).where(eq(houses.houseId, houseId)).returning();
   return deleted;
 };
+
+export const listUniqueTowns = async () => {
+  const { locations } = await import('../db/schema.js');
+  const results = await db.selectDistinct({ town: locations.town })
+    .from(locations)
+    .where(sql`${locations.town} IS NOT NULL`)
+    .orderBy(asc(locations.town));
+  return results.map(r => r.town);
+};

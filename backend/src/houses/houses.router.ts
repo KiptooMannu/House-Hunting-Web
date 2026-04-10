@@ -8,6 +8,7 @@ export const housesRouter = new Hono();
 housesRouter.post('/', authMiddleware, adminOrLandlordMiddleware, houseController.createHouse);
 
 // Global list and details are public
+housesRouter.get('/meta/towns', houseController.listUniqueTowns);
 housesRouter.get('/', houseController.listHouses);
 housesRouter.get('/:houseId', houseController.getHouse);
 

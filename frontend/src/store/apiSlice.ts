@@ -118,6 +118,9 @@ export const apiSlice = createApi({
         body: data,
       }),
     }),
+    getTowns: builder.query({
+      query: () => '/houses/meta/towns',
+    }),
   }),
 });
 
@@ -126,6 +129,7 @@ export const {
   useRegisterMutation,
   useGetProfileQuery,
   useGetHousesQuery,
+  useGetTownsQuery,
   useGetHouseByIdQuery,
   useCreateHouseMutation,
   useUpdateHouseMutation,

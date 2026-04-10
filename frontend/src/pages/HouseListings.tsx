@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useGetHousesQuery } from '../store/apiSlice';
+import { useGetHousesQuery, useGetTownsQuery } from '../store/apiSlice';
 import { formatCurrency } from '../utils/helpers';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -24,6 +23,7 @@ export default function HouseListings() {
     county: '', minRent: 1, maxRent: 500000, bedrooms: '', search: '',
   });
 
+  const { data: townsData } = useGetTownsQuery(undefined);
   const { data, isLoading: loading } = useGetHousesQuery({
     page,
     limit: 12,
@@ -53,7 +53,6 @@ export default function HouseListings() {
     setPage(1);
   }
 
-  const locations = ["Kilimani", "Westlands", "Lavington", "Karen", "Runda", "Kileleshwa"];
 
   return (
     <main className="pt-24 pb-12 px-6 max-w-7xl mx-auto min-h-screen font-body">
@@ -65,67 +64,68 @@ export default function HouseListings() {
               <span className="material-symbols-outlined">tune</span> Filters
             </h2>
             
-            {/* Budget Filter */}
-            <div className="mb-8">
-              <label className="block font-manrope font-bold text-sm text-on-surface mb-3">
-                Budget (KES {filters.maxRent.toLocaleString()})
-              </label>
-              <div className="space-y-4">
-                <Slider 
-                  defaultValue={[filters.maxRent]} 
-                  max={500000} 
-                  min={20000} 
-                  step={5000} 
-                  onValueChange={(val) => setFilters({ ...filters, maxRent: val[0] })}
-                />
-                <div className="flex justify-between text-xs font-medium text-on-surface-variant">
-                  <span>20K</span>
-                  <span>500K+</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Location Filter */}
-            <div className="mb-8">
-              <label className="block font-manrope font-bold text-sm text-on-surface mb-3">Prime Locations</label>
-              <div className="space-y-2">
-                {locations.map((loc) => (
-                  <label key={loc} className="flex items-center gap-3 cursor-pointer group">
-                    <Checkbox 
-                      id={loc}
-                      checked={filters.county === loc}
-                      onCheckedChange={(checked) => {
-                         setFilters({ ...filters, county: checked ? loc : '' });
-                      }}
-                    />
-                    <span className="text-sm text-on-surface-variant group-hover:text-primary transition-colors">{loc}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* House Type */}
-            <div className="mb-8">
-              <label className="block font-manrope font-bold text-sm text-on-surface mb-3">Minimum Bedrooms</label>
-              <Select 
-                value={filters.bedrooms} 
-                onValueChange={(val) => setFilters({ ...filters, bedrooms: val })}
+            {/* Discovery Intelligence */}
+            <div className="mb-12">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-6">Discovery</h3>
+              <Button 
+                onClick={nearMe ? () => setNearMe(false) : requestLocation}
+                variant={nearMe ? "default" : "outline"}
+                className={`w-full justify-start gap-4 rounded-2xl py-7 transition-all border-slate-200 group relative overflow-hidden ${nearMe ? 'bg-secondary text-white border-transparent' : 'bg-white hover:border-primary/30'}`}
               >
-                <SelectTrigger className="w-full bg-surface-container-lowest border-none rounded-lg text-sm">
-                  <SelectValue placeholder="Any" />
+                <div className={`absolute inset-0 bg-white/10 ${nearMe ? 'animate-pulse' : 'hidden'}`}></div>
+                <span className="material-symbols-outlined text-2xl relative z-10">{nearMe ? 'my_location' : 'share_location'}</span>
+                <div className="flex flex-col items-start relative z-10">
+                  <span className="font-bold tracking-tight text-xs leading-none mb-1">{nearMe ? 'Intelligent Tracking On' : 'Houses Near Me'}</span>
+                  <span className="text-[8px] font-black uppercase tracking-widest opacity-60 leading-none">Find Proximity</span>
+                </div>
+              </Button>
+            </div>
+
+            {/* Town Discovery */}
+            <div className="mb-12">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-6">Explore Town</h3>
+              <Select 
+                value={filters.county} 
+                onValueChange={(val) => setFilters({ ...filters, county: val === 'all' ? '' : val })}
+              >
+                <SelectTrigger className="w-full bg-surface-container-lowest border border-slate-100 rounded-2xl py-7 px-4 text-xs font-bold focus:ring-4 focus:ring-secondary/5 transition-all outline-none">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-primary/30 text-lg">travel_explore</span>
+                    <SelectValue placeholder="Select a curated area..." />
+                  </div>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Studio</SelectItem>
-                  <SelectItem value="1">1+ Bedrooms</SelectItem>
-                  <SelectItem value="2">2+ Bedrooms</SelectItem>
-                  <SelectItem value="3">3+ Bedrooms</SelectItem>
-                  <SelectItem value="4">4+ Bedrooms</SelectItem>
+                <SelectContent className="rounded-2xl border-slate-100 shadow-2xl font-manrope">
+                  <SelectItem value="all" className="text-xs font-bold py-3">All Regions</SelectItem>
+                  {townsData?.map((town: string) => (
+                    <SelectItem key={town} value={town} className="text-xs font-bold py-3 capitalize">
+                      {town}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <Button onClick={handleFilter} className="w-full bg-gradient-to-br from-primary to-primary-container text-white py-6 rounded-full font-manrope font-bold text-sm shadow-md active:scale-95 transition-all">
-              Update Results
+            {/* Budget Spectrum */}
+            <div className="mb-12">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40 mb-6 font-manrope">Budget Spectrum</h3>
+              <div className="px-1">
+                <Slider 
+                  value={[filters.maxRent]} 
+                  max={500000} 
+                  min={20000} 
+                  step={5000} 
+                  onValueChange={(val) => setFilters({ ...filters, maxRent: val[0] })}
+                  className="py-4"
+                />
+                <div className="flex justify-between mt-2 text-[10px] font-black tracking-widest text-primary/40 uppercase">
+                  <span>20K</span>
+                  <span className="text-secondary">{formatCurrency(filters.maxRent)}</span>
+                </div>
+              </div>
+            </div>
+
+            <Button onClick={handleFilter} className="w-full bg-primary text-white py-8 rounded-[2rem] font-manrope font-black text-[10px] uppercase tracking-[0.3em] shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95">
+              Refine Results
             </Button>
           </div>
 
