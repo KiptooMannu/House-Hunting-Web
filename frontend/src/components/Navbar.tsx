@@ -70,9 +70,8 @@ export default function Navbar() {
         <div className="flex items-center gap-6">
           <Button 
             onClick={() => {
-               if (!isAuth) navigate('/login?message=landlord_required');
-               else if (['landlord', 'admin'].includes((user as any)?.role)) navigate('/landlord/create');
-               else navigate('/register?role=landlord');
+               if (['landlord', 'admin'].includes((user as any)?.role)) navigate('/landlord/create');
+               else navigate('/onboarding');
             }}
             className="hidden sm:flex bg-primary text-white px-8 h-12 rounded-full font-black text-xs uppercase tracking-widest hover:shadow-xl transition-all active:scale-95 border-none"
           >

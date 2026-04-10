@@ -15,6 +15,7 @@ import UserProfile from './pages/user-dashboard/UserProfile';
 import UserDashboard from './pages/user-dashboard/UserDashboard';
 import BookingProcess from './pages/user-dashboard/BookingProcess';
 import MarketInsights from './pages/admin-landlord/MarketInsights';
+import LandlordOnboarding from './pages/admin-landlord/LandlordOnboarding';
 
 import MyBookings from './pages/user-dashboard/MyBookings';
 import LandlordDashboard from './pages/admin-landlord/LandlordDashboard';
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/houses/:id" element={<HouseDetail />} />
           <Route path="/chatbot" element={<Chatbot />} />
           <Route path="/insights" element={<MarketInsights />} />
+          <Route path="/onboarding" element={<LandlordOnboarding />} />
           <Route path="/booking-confirmed" element={<BookingConfirmed />} />
 
           <Route
