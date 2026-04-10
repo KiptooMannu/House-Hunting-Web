@@ -82,3 +82,16 @@ export const submitNilFiling = async (c: Context) => {
     return c.json({ error: error.message }, 500);
   }
 };
+
+export const validateTCC = async (c: Context) => {
+  try {
+    const body = await c.req.json();
+    if (!body.kraPIN || !body.tccNumber) {
+        return c.json({ error: 'kraPIN and tccNumber are required.' }, 400);
+    }
+    const result = await complianceService.validateLandlordTCC(body.kraPIN, body.tccNumber);
+    return c.json(result, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};

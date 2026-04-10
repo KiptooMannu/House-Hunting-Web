@@ -12,7 +12,7 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ['House', 'Booking', 'User', 'Payment'],
+  tagTypes: ['House', 'Booking', 'User', 'Payment', 'Compliance'],
   endpoints: (builder) => ({
     // Auth Endpoints
     login: builder.mutation({
@@ -121,6 +121,35 @@ export const apiSlice = createApi({
     getTowns: builder.query({
       query: () => '/houses/meta/towns',
     }),
+    
+    // Compliance Endpoints
+    getComplianceLogs: builder.query({
+      query: () => '/compliance-logs',
+      providesTags: ['Compliance'],
+    }),
+    sendRevenueToGava: builder.mutation({
+      query: (data) => ({
+        url: '/compliance-logs/gava/send-revenue',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Compliance'],
+    }),
+    submitNilFiling: builder.mutation({
+      query: (data) => ({
+        url: '/compliance-logs/gava/nil-filing',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Compliance'],
+    }),
+    validateTcc: builder.mutation({
+      query: (data) => ({
+        url: '/compliance-logs/gava/validate-tcc',
+        method: 'POST',
+        body: data,
+      }),
+    }),
   }),
 });
 
@@ -141,4 +170,8 @@ export const {
   useGetPaymentStatusQuery,
   useSendMessageMutation,
   useResetSessionMutation,
+  useGetComplianceLogsQuery,
+  useSendRevenueToGavaMutation,
+  useSubmitNilFilingMutation,
+  useValidateTccMutation,
 } = apiSlice;
