@@ -1,12 +1,17 @@
 import { Hono } from 'hono';
 import * as userController from './users.controller.js';
-// import { authMiddleware, adminMiddleware } from '../middleware/authMiddleware.js';
+import { authMiddleware, adminOrLandlordMiddleware } from '../middleware/authMiddleware.js';
 
 export const usersRouter = new Hono();
 
-// Public routes? Probably protected. Add middleware as needed.
-usersRouter.get('/', userController.listUsers);
-usersRouter.get('/:userId', userController.getUser);
+// Public registration (creating a user)
 usersRouter.post('/', userController.createUser);
-usersRouter.put('/:userId', userController.updateUser);
-usersRouter.delete('/:userId', userController.deleteUser);
+
+// Protected profile route (any logged in user can see their own)
+usersRouter.get('/profile', authMiddleware, userController.getProfile);
+
+// Management routes - only Admin or Landlord can list or manage others
+usersRouter.get('/', authMiddleware, adminOrLandlordMiddleware, userController.listUsers);
+usersRouter.get('/:userId', authMiddleware, adminOrLandlordMiddleware, userController.getUser);
+usersRouter.put('/:userId', authMiddleware, adminOrLandlordMiddleware, userController.updateUser);
+usersRouter.delete('/:userId', authMiddleware, adminOrLandlordMiddleware, userController.deleteUser);

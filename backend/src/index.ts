@@ -18,16 +18,17 @@ const app = new Hono();
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // Mount all routers
-app.route('/auth', authRouter);
-app.route('/users', usersRouter);
-app.route('/locations', locationsRouter);
-app.route('/houses', housesRouter);
-app.route('/house-images', houseImagesRouter);
-app.route('/chatbot-sessions', chatbotSessionsRouter);
-app.route('/bookings', bookingsRouter);
-app.route('/payments', paymentsRouter);
-app.route('/compliance-logs', complianceLogsRouter);
-app.route('/audit-logs', auditLogsRouter);
+// Mount all routers under /api prefix for consistency
+app.route('/api/auth', authRouter);
+app.route('/api/users', usersRouter);
+app.route('/api/locations', locationsRouter);
+app.route('/api/houses', housesRouter);
+app.route('/api/house-images', houseImagesRouter);
+app.route('/api/chatbot-sessions', chatbotSessionsRouter);
+app.route('/api/bookings', bookingsRouter);
+app.route('/api/payments', paymentsRouter);
+app.route('/api/compliance-logs', complianceLogsRouter);
+app.route('/api/audit-logs', auditLogsRouter);
 
 // 404 handler
 app.notFound((c) => c.json({ error: 'Route not found' }, 404));

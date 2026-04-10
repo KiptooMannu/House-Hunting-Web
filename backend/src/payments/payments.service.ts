@@ -25,3 +25,19 @@ export const deletePayment = async (paymentId: number) => {
   const [deleted] = await db.delete(payments).where(eq(payments.paymentId, paymentId)).returning();
   return deleted;
 };
+
+export const getRevenue = async () => {
+  const allPayments = await db.select().from(payments);
+  const total_revenue = allPayments.reduce((acc, p) => acc + Number(p.amount), 0);
+  const total_payments = allPayments.length;
+  const average_payment = total_payments > 0 ? total_revenue / total_payments : 0;
+
+  return {
+    summary: {
+      total_revenue,
+      total_payments,
+      average_payment,
+    },
+    items: allPayments,
+  };
+};

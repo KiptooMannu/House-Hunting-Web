@@ -58,3 +58,13 @@ export const deleteSession = async (c: Context) => {
     return c.json({ error: error.message }, 500);
   }
 };
+
+export const sendMessage = async (c: Context) => {
+  try {
+    const { message } = await c.req.json();
+    const response = await sessionService.getChatResponse(message);
+    return c.json({ response }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};

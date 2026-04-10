@@ -65,3 +65,14 @@ export const deleteUser = async (c: Context) => {
     return c.json({ error: error.message }, 500);
   }
 };
+
+export const getProfile = async (c: Context) => {
+  try {
+    const userId = c.get('userId');
+    const user = await userService.getUser(userId);
+    if (!user) return c.json({ error: 'User not found' }, 404);
+    return c.json({ user }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};

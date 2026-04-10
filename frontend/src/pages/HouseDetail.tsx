@@ -1,389 +1,319 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../api/axios';
+import { useSelector } from 'react-redux';
+import { Badge } from '@/components/ui/badge';
+import type { RootState } from '../store';
+import { useGetHouseByIdQuery } from '../store/apiSlice';
 import { formatCurrency } from '../utils/helpers';
-import Footer from '../components/Footer';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function HouseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  const houseId = useMemo(() => {
-    if (!id) return null;
-    const parsed = Number(id);
-    return Number.isFinite(parsed) ? parsed : null;
-  }, [id]);
+  const houseId = id ? parseInt(id) : null;
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   const defaultBookingDate = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 1); // Default to tomorrow
+    d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10);
   }, []);
 
-  const [house, setHouse] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+  const { data: houseData, isLoading: loading, error: fetchError } = useGetHouseByIdQuery(houseId, { skip: !houseId });
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  const house = houseData;
   const [bookingDate, setBookingDate] = useState(defaultBookingDate);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [bookingLoading, setBookingLoading] = useState(false);
+  const [checkoutDate, setCheckoutDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 3);
+    return d.toISOString().slice(0, 10);
+  });
+
+  const stayDuration = useMemo(() => {
+    const start = new Date(bookingDate);
+    const end = new Date(checkoutDate);
+    const diff = end.getTime() - start.getTime();
+    return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [bookingDate, checkoutDate]);
+
+  if (loading) return <LoadingSpinner text="Consulting the Curator..." />;
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+  if (fetchError) return <div className="min-h-screen p-16 mt-16 text-center text-error font-bold">Failed to load property details.</div>;
+  if (!house) return <div className="min-h-screen p-16 mt-16 text-center text-on-surface-variant font-bold">Property not found.</div>;
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (!id) return;
-      setLoading(true);
-      setError('');
-      try {
-        const res = await api.get(`/houses/${id}`);
-        if (!cancelled) setHouse(res.data?.data?.house ?? null);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.message || 'Failed to load house.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const dailyRate = house.dailyRate && Number(house.dailyRate) > 0 ? Number(house.dailyRate) : (Number(house.monthlyRent) / 30);
+  const totalPrice = stayDuration * dailyRate;
+
+  const handleProceedToBooking = () => {
+    if (!user) {
+        navigate('/login');
+        return;
     }
-    load();
-    return () => { cancelled = true; };
-  }, [id]);
-
-  async function handleStkPush() {
-    if (!houseId) return;
-    setBookingLoading(true);
-    setError('');
-    
-    // In a real implementation this might call /mpesa/stkpush first
-    // For now we preserve the existing booking endpoint logic and add phone.
-    try {
-      await api.post('/bookings', {
-        house_id: houseId,
-        booking_date: bookingDate,
-        phone_number: phoneNumber // Pass phone if backend supports it
-      });
-      setBookingSuccess(true);
-      setTimeout(() => {
-        setIsModalOpen(false);
-        navigate('/my-bookings');
-      }, 2000);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Booking request failed.');
-    } finally {
-      setBookingLoading(false);
-    }
-  }
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-surface">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
-  
-  if (error && !isModalOpen) return <div className="min-h-screen p-8 mt-16 text-center text-error bg-surface">{error}</div>;
-  if (!house) return <div className="min-h-screen p-8 mt-16 text-center text-on-surface-variant bg-surface">House not found.</div>;
+    navigate(`/book/${house.houseId}`, { 
+      state: { 
+        startDate: bookingDate, 
+        endDate: checkoutDate, 
+        totalPrice, 
+        stayDuration, 
+        dailyRate 
+      } 
+    });
+  };
 
   return (
-    <div className="bg-surface font-body text-on-surface min-h-screen pt-20 flex flex-col">
-      <main className="flex-grow pb-12 max-w-7xl mx-auto px-6 w-full mt-8">
-        
-        {/* Hero Editorial Gallery */}
-        <section className="grid grid-cols-12 gap-2 md:gap-4 mb-16">
-          <div className="col-span-12 md:col-span-8 h-[250px] sm:h-[350px] md:h-[500px] overflow-hidden rounded-xl group relative">
-            {house.images && house.images.length > 0 ? (
-               <img 
-                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                 alt={house.title} 
-                 src={house.images[0]} 
-               />
-            ) : (
-               <div className="w-full h-full bg-surface-container flex items-center justify-center text-6xl">🏠</div>
-            )}
-            <div className="absolute top-6 left-6 flex gap-2">
-              <span className="bg-secondary/90 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span> Verified Listing
-              </span>
-              <span className="bg-white/90 text-primary px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md">Premium Estate</span>
+    <main className="bg-surface text-on-surface selection:bg-primary-fixed antialiased pt-20">
+      {/* Editorial Hero Section */}
+      <section className="max-w-screen-2xl mx-auto px-4 md:px-8 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 h-auto md:h-[716px]">
+          {/* Main Hero Snap */}
+          <div className="md:col-span-8 relative overflow-hidden rounded-2xl md:rounded-3xl group border border-slate-200 shadow-sm aspect-video md:aspect-auto">
+            <img 
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+              src={house.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c"} 
+              alt={house.title}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 text-left">
+              <div className="mb-4">
+                <Badge className="bg-secondary text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex w-fit items-center gap-2 border-none shadow-xl">
+                  <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                  Verified Listing
+                </Badge>
+              </div>
+              <h1 className="text-white text-3xl md:text-6xl font-black font-headline tracking-tighter mb-2 leading-none">{house.title}</h1>
+              <p className="text-white/90 text-sm md:text-2xl font-medium font-manrope">{house.location?.county || house.location?.town || 'Nairobi'}, Kenya</p>
             </div>
           </div>
-          <div className="col-span-12 md:col-span-4 flex flex-col gap-2 md:gap-4">
-            <div className="h-[120px] sm:h-[170px] md:h-[242px] overflow-hidden rounded-xl group bg-surface-container">
-               {house.images && house.images.length > 1 ? (
-                 <img className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Detail 1" src={house.images[1]} />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center text-outline-variant font-medium text-sm">No secondary image</div>
-               )}
-            </div>
-            <div className="h-[120px] sm:h-[170px] md:h-[242px] overflow-hidden rounded-xl group relative bg-surface-container">
-               {house.images && house.images.length > 2 ? (
-                 <img className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Detail 2" src={house.images[2]} />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center text-outline-variant font-medium text-sm">No tertiary image</div>
-               )}
-               {house.images && house.images.length > 3 && (
-                 <div className="absolute inset-0 bg-primary/40 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                   <span className="text-white font-headline font-bold underline">View {house.images.length} Photos</span>
-                 </div>
-               )}
-            </div>
-          </div>
-        </section>
 
-        <div className="grid grid-cols-12 gap-12">
-          {/* Content Area */}
-          <div className="col-span-12 lg:col-span-8">
-            <div className="mb-8">
-              <h1 className="text-4xl md:text-5xl font-black font-headline text-primary tracking-tight mb-2">{house.title}</h1>
-              <p className="text-lg text-on-surface-variant flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">location_on</span>
-                {house.location_name || house.county || 'Kenya'} • {house.status === 'available' ? 'Available Now' : 'Currently Rented'}
-              </p>
+          {/* Secondary Snaps */}
+          <div className="md:col-span-4 flex flex-col sm:flex-row md:flex-col gap-4">
+            <div className="flex-1 rounded-2xl md:rounded-3xl overflow-hidden group border border-slate-200 relative aspect-video md:aspect-auto">
+              <img 
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                src={house.images?.[1]?.imageUrl || house.images?.[0]?.imageUrl} 
+                alt="Detail 1"
+              />
             </div>
-            
-            {/* Stats Bar */}
-            <div className="flex flex-wrap gap-8 md:gap-12 py-8 border-y-0 bg-surface-container-low rounded-xl px-8 mb-12">
-              <div className="flex flex-col">
-                <span className="text-xs text-on-surface-variant uppercase tracking-widest font-semibold mb-1">Bedrooms</span>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">bed</span>
-                  <span className="text-xl font-bold font-headline">{house.bedrooms}</span>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-on-surface-variant uppercase tracking-widest font-semibold mb-1">Bathrooms</span>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">shower</span>
-                  <span className="text-xl font-bold font-headline">{house.bathrooms}</span>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-on-surface-variant uppercase tracking-widest font-semibold mb-1">Status</span>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary">check_circle</span>
-                  <span className="text-xl font-bold font-headline text-secondary capitalize">{house.status}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-12 pr-0 md:pr-12">
-              <section>
-                <h2 className="font-headline text-2xl font-bold text-primary mb-6">About this home</h2>
-                <p className="text-on-surface-variant leading-relaxed text-lg whitespace-pre-line">
-                  {house.description || 'No description provided.'}
-                </p>
-              </section>
-
-              {house.amenities && house.amenities.length > 0 && (
-                <section>
-                  <h2 className="font-headline text-2xl font-bold text-primary mb-6">Premium Amenities</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6">
-                    {house.amenities.map((amenity: string, idx: number) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center">
-                          <span className="material-symbols-outlined text-primary text-sm">verified</span>
+            <div className="flex-1 rounded-2xl md:rounded-3xl overflow-hidden relative group border border-slate-200 aspect-video md:aspect-auto">
+              <img 
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                src={house.images?.[2]?.imageUrl || house.images?.[0]?.imageUrl} 
+                alt="Detail 2"
+              />
+              <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
+                <DialogTrigger asChild>
+                  <button className="absolute bottom-4 right-4 md:bottom-6 md:right-6 bg-white/90 backdrop-blur px-6 md:px-8 py-3 md:py-4 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 shadow-2xl hover:bg-white transition-all transform active:scale-95 z-10">
+                    <span className="material-symbols-outlined text-base md:text-lg">grid_view</span>
+                    View All {house.images?.length || 0}
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[95vw] w-full h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-xl border-none p-10 rounded-[3rem] shadow-2xl font-manrope">
+                  <DialogHeader className="mb-12">
+                    <DialogTitle className="text-4xl font-black text-primary tracking-tighter flex items-center gap-4">
+                      <span className="material-symbols-outlined text-3xl">luxury_residences</span>
+                      The Complete Gallery
+                    </DialogTitle>
+                    <p className="text-on-surface-variant font-bold text-xs uppercase tracking-[0.3em] opacity-60">Curated by EstateCurator Premium</p>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {house.images?.map((img: any, idx: number) => (
+                      <div key={idx} className="group relative aspect-square rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all h-full">
+                        <img 
+                          src={img.imageUrl} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                          alt={img.caption || `House snapshot ${idx + 1}`} 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
+                          <p className="text-white text-xs font-black uppercase tracking-widest">{img.caption || `Perspective ${idx + 1}`}</p>
                         </div>
-                        <span className="font-medium text-sm capitalize">{amenity}</span>
                       </div>
                     ))}
                   </div>
-                </section>
-              )}
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              {house.landlord && (
-                <section className="bg-surface-container-low rounded-xl p-8 flex items-center gap-6">
-                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 text-primary text-2xl font-bold">
-                    {(house.landlord.name || 'L')[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold font-headline">{house.landlord.name || 'Anonymous Landlord'}</h3>
-                    <p className="text-on-surface-variant text-sm mb-4">Verified Estate Manager</p>
-                    <div className="flex flex-wrap gap-4">
-                      <button className="bg-primary-fixed text-primary px-6 py-2 rounded-full font-bold text-sm hover:bg-primary hover:text-white transition-colors">
-                        Message
-                      </button>
-                      <button className="text-primary px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2 border border-primary/20 hover:bg-primary/5">
-                        <span className="material-symbols-outlined text-[18px]">call</span> Show Number
-                      </button>
-                    </div>
-                  </div>
-                </section>
-              )}
+      {/* Main Content & Sidebar */}
+      <section className="max-w-screen-2xl mx-auto px-8 mt-16 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-16">
+        
+        {/* Left Column: Content */}
+        <div className="col-span-1 lg:col-span-8 text-left">
+          {/* Key Stats Bar */}
+          <div className="bg-surface-container-low p-10 rounded-[2.5rem] flex flex-wrap justify-between items-center mb-16 shadow-inner border border-slate-100">
+            <div className="flex flex-col mb-4 md:mb-0">
+              <span className="text-on-surface-variant text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">Valuation</span>
+              <span className="text-4xl font-black text-primary tracking-tighter font-headline">{formatCurrency(house.monthlyRent)}<span className="text-sm font-medium ml-1">/mo</span></span>
+            </div>
+            <div className="hidden md:block h-16 w-px bg-outline-variant/30 mx-8"></div>
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-3xl">bed</span>
+              <div className="flex flex-col">
+                <span className="font-black text-2xl font-headline leading-none">{house.bedrooms}</span>
+                <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-60">Beds</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-3xl">bathtub</span>
+              <div className="flex flex-col">
+                <span className="font-black text-2xl font-headline leading-none">{house.bathrooms}</span>
+                <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-60">Baths</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-3xl">square_foot</span>
+              <div className="flex flex-col">
+                <span className="font-black text-2xl font-headline leading-none">{house.square_footage || '2,400'}</span>
+                <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-60">SQFT</span>
+              </div>
             </div>
           </div>
 
-          {/* Booking Sidebar */}
-          <div className="col-span-12 lg:col-span-4 relative">
-            <div className="sticky top-24 space-y-6">
-              <div className="bg-surface-container-lowest rounded-xl shadow-sm p-8 border-none ring-1 ring-outline-variant/20">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <span className="text-3xl font-black font-headline text-primary">
-                      {formatCurrency(house.rent)}
+          {/* Description */}
+          <div className="space-y-8 mb-20">
+            <h2 className="text-4xl font-black tracking-tight text-primary font-headline leading-tight">Modern Architecture & <br/>Premium Finishes.</h2>
+            <div className="prose prose-slate max-w-none text-on-surface-variant text-lg leading-relaxed font-body">
+              <p className="border-l-4 border-primary/20 pl-8 text-xl font-medium text-primary/80">
+                {house.description || 'This masterclass in contemporary urban design redefines luxury through its dramatic use of dark textures and natural light.'}
+              </p>
+              <p className="mt-6">
+                Featuring expansive double-height ceilings and bespoke industrial-chic elements, this property offers an unparalleled sense of volume and curated luxury.
+              </p>
+            </div>
+          </div>
+
+          {/* Amenities Grid */}
+          <div className="mb-20">
+            <h3 className="text-[11px] font-black mb-10 uppercase tracking-[0.3em] text-on-surface-variant opacity-60">Exceptional Amenities</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { name: '24/7 Elite Security', icon: 'security' },
+                { name: 'Private Rooftop Garden', icon: 'eco' },
+                { name: 'Integrated Smart Tech', icon: 'smart_toy' },
+                { name: 'Infinity Edge Pool', icon: 'pool' }
+              ].map((amenity, idx) => (
+                <div key={idx} className="bg-white p-8 rounded-[2rem] flex items-center gap-6 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+                  <div className="w-16 h-16 rounded-2xl bg-primary-fixed flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      {amenity.icon}
                     </span>
-                    <span className="text-on-surface-variant font-medium ml-1">/month</span>
                   </div>
+                  <span className="font-black text-primary font-headline text-lg">{amenity.name}</span>
                 </div>
-                
-                <div className="bg-surface-container rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold">One-time Booking Fee</span>
-                    <span className="text-sm font-bold text-tertiary">KSh 500</span>
-                  </div>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">
-                    This fee secures your viewing slot and authenticates your intent. It is non-refundable but applied against your first month's rent.
-                  </p>
-                </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="mb-6 space-y-2">
-                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Select Viewing Date</label>
-                   <input 
-                     type="date" 
-                     className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary text-sm font-semibold text-primary"
-                     value={bookingDate}
-                     onChange={(e) => setBookingDate(e.target.value)}
-                     min={defaultBookingDate}
-                   />
-                </div>
-
-                <button 
-                  className="w-full bg-gradient-to-r from-tertiary to-[#7a3000] text-white py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all transform active:scale-[0.98] mb-4"
-                  onClick={() => setIsModalOpen(true)}
-                  disabled={house.status !== 'available'}
-                >
-                  {house.status !== 'available' ? 'Currently Rented' : 'Book Viewing Now'}
-                </button>
-                
-                <div className="flex items-center gap-2 justify-center py-2">
-                  <span className="material-symbols-outlined text-secondary text-[18px]">gavel</span>
-                  <p className="text-[10px] text-on-surface-variant text-center uppercase tracking-widest font-bold">
-                    Logged for Tax Compliance (KRA Ready)
-                  </p>
-                </div>
-                
-                <hr className="my-6 border-outline-variant/20"/>
-                
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <span className="material-symbols-outlined text-primary">event_available</span>
-                    <div>
-                      <p className="text-sm font-bold">Instant Confirmation</p>
-                      <p className="text-xs text-on-surface-variant">Receive your booking slip via SMS immediately.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="material-symbols-outlined text-primary">shield</span>
-                    <div>
-                      <p className="text-sm font-bold">Secure Escrow</p>
-                      <p className="text-xs text-on-surface-variant">Payments are held in a secure GavaConnect account.</p>
-                    </div>
-                  </div>
-                </div>
+          {/* Neighborhood */}
+          <div className="mb-20">
+            <h3 className="text-[11px] font-black mb-10 uppercase tracking-[0.3em] text-on-surface-variant opacity-60">Neighborhood Insights: {house.location?.county || 'Riverside'}</h3>
+            <div className="rounded-[3rem] overflow-hidden h-[500px] relative group shadow-2xl border-8 border-white ring-1 ring-slate-200">
+              <img 
+                className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-1000" 
+                src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80" 
+                alt="Map Visualization"
+              />
+              <div className="absolute top-8 left-8 bg-white/95 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-2xl max-w-xs border border-slate-100">
+                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-6 border-b border-primary/10 pb-4">Local Highlights</p>
+                <ul className="space-y-5">
+                  <li className="text-sm font-bold flex items-center gap-4 text-on-surface-variant group"><span className="w-2.5 h-2.5 rounded-full bg-secondary group-hover:scale-150 transition-transform"></span> Westlands Core (5 min)</li>
+                  <li className="text-sm font-bold flex items-center gap-4 text-on-surface-variant group"><span className="w-2.5 h-2.5 rounded-full bg-secondary group-hover:scale-150 transition-transform"></span> Arboretum Forest (10 min)</li>
+                  <li className="text-sm font-bold flex items-center gap-4 text-on-surface-variant group"><span className="w-2.5 h-2.5 rounded-full bg-secondary group-hover:scale-150 transition-transform"></span> Diplomatic Enclave</li>
+                </ul>
               </div>
-
-              {/* Location Context sidecard */}
-              <div className="bg-surface-container-low rounded-xl p-6 hidden md:block">
-                <h4 className="font-headline font-bold text-primary mb-3">Location Context</h4>
-                <div className="h-32 rounded-lg bg-surface-container-highest mb-4 flex items-center justify-center font-bold text-outline-variant uppercase">
-                  Map Placeholder
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-on-surface-variant">{house.location_name || 'Center'}</span>
-                    <span className="font-bold">5 min drive</span>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
-      </main>
 
-      {/* M-Pesa Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-primary/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
-            <div className="p-8">
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#39B54A] rounded-xl flex items-center justify-center">
-                    <span className="text-white font-black text-xl italic">M</span>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-headline font-bold text-primary">Pay via M-Pesa</h3>
-                    <p className="text-xs text-on-surface-variant font-medium line-clamp-1">Securing: {house.title}</p>
-                  </div>
-                </div>
-                {!bookingLoading && !bookingSuccess && (
-                  <button 
-                    className="text-on-surface-variant hover:bg-surface-container-high p-1 rounded-full"
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                )}
+        {/* Right Column: Sticky Sidebar */}
+        <div className="col-span-1 lg:col-span-4">
+          <div className="sticky top-28 bg-white p-10 rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100 text-left">
+            <div className="flex justify-between items-start mb-10">
+              <div>
+                <h4 className="text-3xl font-black text-primary font-headline tracking-tighter leading-tight">Secure Viewing</h4>
+                <p className="text-on-surface-variant text-[11px] font-bold uppercase tracking-widest mt-2 opacity-60">Premium Reservation</p>
               </div>
-              
-              {bookingSuccess ? (
-                <div className="text-center py-8">
-                   <div className="w-16 h-16 bg-secondary-container text-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                     <span className="material-symbols-outlined text-3xl font-bold">check</span>
-                   </div>
-                   <h3 className="text-xl font-bold text-primary mb-2">Push Sent Successfully!</h3>
-                   <p className="text-sm text-on-surface-variant">Please check your phone and enter your M-Pesa PIN.</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {error && (
-                    <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">
-                      {error}
-                    </div>
-                  )}
+              <Badge className="bg-tertiary-fixed px-4 py-2 rounded-full text-[10px] font-black text-tertiary uppercase tracking-widest border-none">Hot Property</Badge>
+            </div>
 
-                  <div className="bg-surface-container-low rounded-xl p-6 text-center border ring-1 ring-[#39B54A]/30">
-                    <p className="text-sm font-bold text-on-surface-variant mb-1">Total Due Now</p>
-                    <p className="text-4xl font-black font-headline text-[#39B54A]">KSh 500</p>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-bold text-on-surface-variant block mb-2">M-Pesa Registered Number</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">+254</span>
-                      <input 
-                        className="w-full bg-surface-container-high border-none rounded-xl py-4 pl-16 pr-4 focus:ring-2 focus:ring-[#39B54A] font-bold text-lg" 
-                        placeholder="712 345 678" 
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                      />
-                    </div>
-                    <p className="text-[10px] text-on-surface-variant mt-2 leading-tight">
-                      By clicking below, you will receive an STK Push on your phone to enter your M-Pesa PIN.
-                    </p>
-                  </div>
-                  
-                  <button 
-                    className="w-full bg-[#39B54A] hover:bg-[#2e943c] text-white py-4 rounded-full font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50"
-                    onClick={handleStkPush}
-                    disabled={bookingLoading || !phoneNumber}
-                  >
-                    <span className="material-symbols-outlined">send_to_mobile</span>
-                    {bookingLoading ? 'Sending Push...' : 'Send STK Push'}
-                  </button>
-                  
-                  <p className="text-[11px] text-center text-on-surface-variant flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">verified_user</span>
-                    Encrypted & Logged for Compliance
-                  </p>
+            <div className="space-y-6 mb-10">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-in Period</label>
+                <div className="relative group">
+                  <input 
+                    type="date" 
+                    className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    min={defaultBookingDate}
+                  />
+                  <span className="material-symbols-outlined absolute right-8 top-1/2 -translate-y-1/2 text-primary/30 group-hover:text-primary transition-colors">calendar_today</span>
                 </div>
-              )}
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-out Period</label>
+                <div className="relative group">
+                  <input 
+                    type="date" 
+                    className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all"
+                    value={checkoutDate}
+                    onChange={(e) => setCheckoutDate(e.target.value)}
+                    min={bookingDate}
+                  />
+                  <span className="material-symbols-outlined absolute right-8 top-1/2 -translate-y-1/2 text-primary/30 group-hover:text-primary transition-colors">schedule</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-8 rounded-[2rem] mb-10 space-y-5 shadow-inner border border-slate-100/50">
+              <div className="flex justify-between text-[11px] font-black uppercase tracking-widest opacity-60">
+                <span>Stay Collection ({stayDuration} Nights)</span>
+                <span className="text-primary">{formatCurrency(totalPrice)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200/50 pt-6">
+                <span className="text-xs font-black uppercase tracking-widest text-on-surface-variant opacity-60 tracking-[0.2em]">Total</span>
+                <span className="text-4xl font-black text-primary font-headline tracking-tighter">{formatCurrency(totalPrice)}</span>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleProceedToBooking}
+              className="w-full bg-gradient-to-br from-primary via-primary to-primary-container text-white py-10 rounded-full font-black text-xl shadow-2xl shadow-primary/20 transition-all transform hover:scale-[1.03] active:scale-[0.98] mb-10 flex flex-col items-center justify-center gap-1 border-none relative overflow-hidden group"
+            >
+               <div className="flex items-center gap-4 relative z-10">
+                 <span>Initiate Booking</span>
+                 <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">send_to_mobile</span>
+               </div>
+               <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">Verified Protocol</span>
+            </button>
+
+            <div className="space-y-6 border-t border-slate-100 pt-10">
+              <div className="flex items-center gap-5 text-xs font-black uppercase tracking-[0.2em] text-secondary group">
+                <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+                </div>
+                GavaConnect Protected
+              </div>
+              <div className="flex items-center gap-5 text-xs font-black uppercase tracking-[0.2em] text-primary group">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
+                </div>
+                M-Pesa Secured
+              </div>
             </div>
           </div>
         </div>
-      )}
-
-      <Footer />
-    </div>
+      </section>
+    </main>
   );
 }

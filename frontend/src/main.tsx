@@ -1,7 +1,8 @@
-import React from 'react';
+import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { Provider } from 'react-redux';
+import { store } from './store';
 import App from './App';
 import './style.css';
 
@@ -11,17 +12,11 @@ if (!rootEl) {
 }
 
 createRoot(rootEl).render(
-  React.createElement(
-    React.StrictMode,
-    null,
-    React.createElement(
-      BrowserRouter,
-      null,
-      React.createElement(
-        AuthProvider,
-        null,
-        React.createElement(App),
-      ),
-    ),
-  ),
+  <React.StrictMode>
+    <Provider store={store}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </Provider>
+  </React.StrictMode>
 );

@@ -73,6 +73,7 @@ export const houseSchema = z.object({
   bedrooms: z.number().int().min(0).default(1),
   bathrooms: z.number().int().min(0).default(1),
   monthlyRent: z.string().or(z.number()).transform((v: string | number) => Number(v)),
+  dailyRate: z.string().or(z.number()).optional().transform((v: string | number | undefined) => v ? Number(v) : 0),
   depositAmount: z.string().or(z.number()).optional().transform((v: string | number | undefined) => v ? Number(v) : undefined),
   isDepositNegotiable: z.boolean().default(false),
   availableFrom: z.string().date().optional().nullable(),
@@ -122,6 +123,8 @@ export const bookingSchema = z.object({
   status: BookingStatusEnum.default('pending_payment'),
   bookingFee: z.string().or(z.number()).transform((v: string | number) => Number(v)),
   moveInDate: z.string().date().optional().nullable(),
+  checkoutDate: z.string().date().optional().nullable(),
+  totalPrice: z.string().or(z.number()).optional().transform((v: string | number | undefined) => v ? Number(v) : 0),
   specialRequests: z.string().optional(),
   rejectionReason: z.string().optional(),
   confirmedAt: z.date().optional().nullable(),
@@ -227,19 +230,21 @@ export const paginationSchema = z.object({
 
 // Extend for each resource:
 export const userListQuery = paginationSchema.extend({
-  role: UserRoleEnum.optional(),
-  accountStatus: AccountStatusEnum.optional(),
+  role: UserRoleEnum.optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  accountStatus: AccountStatusEnum.optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
   search: z.string().optional(),
 });
 
 export const houseListQuery = paginationSchema.extend({
-  minRent: z.string().optional().transform((v: string | undefined) => v ? Number(v) : undefined),
-  maxRent: z.string().optional().transform((v: string | undefined) => v ? Number(v) : undefined),
-  houseType: HouseTypeEnum.optional(),
-  furnishing: FurnishingEnum.optional(),
-  bedrooms: z.string().optional().transform((v: string | undefined) => v ? parseInt(v, 10) : undefined),
-  status: ListingStatusEnum.optional(),
-  locationId: z.string().optional().transform((v: string | undefined) => v ? parseInt(v, 10) : undefined),
+  minRent: z.string().optional().transform((v: string | undefined) => (v && v !== '') ? Number(v) : undefined),
+  maxRent: z.string().optional().transform((v: string | undefined) => (v && v !== '') ? Number(v) : undefined),
+  houseType: HouseTypeEnum.optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  furnishing: FurnishingEnum.optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  bedrooms: z.string().optional().transform((v: string | undefined) => (v && v !== '') ? parseInt(v, 10) : undefined),
+  status: ListingStatusEnum.optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  locationId: z.string().optional().transform((v: string | undefined) => (v && v !== '') ? parseInt(v, 10) : undefined),
+  county: z.string().optional(),
+  search: z.string().optional(),
 });
 
 // ============================================================

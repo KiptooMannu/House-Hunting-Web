@@ -1,21 +1,26 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { formatCurrency } from '../utils/helpers';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 type ChatMsg = { role: 'user' | 'assistant'; text: string };
 
 export default function Chatbot() {
   const navigate = useNavigate();
 
-  const defaultBookingDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { role: 'assistant', text: "Welcome to the Modern Estate Concierge. I'm your AI curator. What kind of property are you looking for today? Tell me about your budget, preferred location, and bedroom count." }
+  ]);
   const [input, setInput] = useState('');
   const [houses, setHouses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [bookingDate] = useState(defaultBookingDate);
   const [error, setError] = useState('');
 
   async function sendMessage() {
@@ -26,6 +31,7 @@ export default function Chatbot() {
     setLoading(true);
     try {
       setMessages((prev) => [...prev, { role: 'user', text: message }]);
+      setInput('');
 
       const res = await api.post('/chatbot/message', {
         session_id: sessionId ?? undefined,
@@ -45,8 +51,6 @@ export default function Chatbot() {
       } else {
         setHouses([]);
       }
-
-      setInput('');
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to send message.');
     } finally {
@@ -61,93 +65,125 @@ export default function Chatbot() {
         await api.post('/chatbot/reset', { session_id: sessionId });
       }
     } catch {
-      // Reset is best-effort; backend clears only if session exists.
     } finally {
       setSessionId(null);
-      setMessages([]);
+      setMessages([
+        { role: 'assistant', text: "Concierge session reset. How can I help you find your new home?" }
+      ]);
       setHouses([]);
     }
   }
 
-  async function requestBooking(houseId: number) {
-    setError('');
-    try {
-      await api.post('/bookings', {
-        house_id: houseId,
-        booking_date: bookingDate,
-      });
-      navigate('/my-bookings');
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Booking request failed.');
-    }
-  }
-
   return (
-    <div className="container page">
-      <h1>Chatbot House Search</h1>
-
-      <div className="chat-shell panel">
-        <div className="chat-messages">
-          {messages.length === 0 ? (
-            <div className="empty-state">Ask about your budget, location, and bedroom count.</div>
-          ) : (
-            messages.map((m, idx) => (
-              <div
-                key={idx}
-                className={m.role === 'user' ? 'chat-bubble user' : 'chat-bubble assistant'}
-              >
-                <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{m.text}</pre>
+    <main className="min-h-screen pt-24 pb-12 px-6 max-w-7xl mx-auto font-body text-left">
+      <div className="flex flex-col lg:flex-row gap-12 h-[calc(100vh-160px)]">
+        
+        {/* Chat Interface */}
+        <section className="flex-1 flex flex-col bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">
+           {/* Header */}
+           <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 backdrop-blur-md relative z-10">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+                 </div>
+                 <div>
+                    <h2 className="text-xl font-black font-headline text-primary">AI Concierge</h2>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></span>
+                      Intelligence Active
+                    </p>
+                 </div>
               </div>
-            ))
-          )}
-        </div>
+              <Button onClick={reset} variant="ghost" className="text-slate-400 font-bold uppercase tracking-widest text-[10px] hover:text-error">Reset Session</Button>
+           </div>
 
-        <div className="chat-compose">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your preferences..."
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') sendMessage();
-            }}
-          />
-          <button className="btn btn-primary" disabled={loading} onClick={sendMessage} type="button">
-            {loading ? 'Thinking...' : 'Send'}
-          </button>
-          <button className="btn btn-outline" onClick={reset} type="button">
-            Reset
-          </button>
-        </div>
+           {/* Messages */}
+           <ScrollArea className="flex-1 p-8 bg-slate-50/30">
+              <div className="space-y-8 max-w-3xl mx-auto">
+                 {messages.map((m, idx) => (
+                   <div key={idx} className={`flex items-start gap-4 ${m.role === 'user' ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                      <Avatar className="w-10 h-10 shadow-sm">
+                        {m.role === 'assistant' ? (
+                          <AvatarFallback className="bg-primary text-white"><span className="material-symbols-outlined text-sm">smart_toy</span></AvatarFallback>
+                        ) : (
+                          <AvatarFallback className="bg-slate-200">U</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className={`p-6 rounded-3xl max-w-[80%] text-sm font-medium leading-relaxed shadow-sm ${
+                        m.role === 'user' 
+                        ? 'bg-primary text-white rounded-tr-sm' 
+                        : 'bg-white text-slate-700 rounded-tl-sm border border-slate-100'
+                      }`}>
+                         {m.text}
+                      </div>
+                   </div>
+                 ))}
+                 {loading && (
+                    <div className="flex items-start gap-4 animate-pulse">
+                        <Avatar className="w-10 h-10"><AvatarFallback className="bg-primary/20"></AvatarFallback></Avatar>
+                        <div className="p-6 bg-white rounded-3xl rounded-tl-sm w-32 h-12 border border-slate-50"></div>
+                    </div>
+                 )}
+              </div>
+           </ScrollArea>
+
+           {/* Compose */}
+           <div className="p-8 bg-white border-t border-slate-50 relative z-10">
+              <div className="max-w-3xl mx-auto relative flex items-center">
+                 <Input 
+                   value={input}
+                   onChange={(e) => setInput(e.target.value)}
+                   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                   placeholder="e.g. Find me a 3BR apartment in Kilimani for under 150k" 
+                   className="w-full bg-slate-50 border-none rounded-full py-8 pl-8 pr-16 font-bold text-primary focus-visible:ring-primary/20 shadow-inner"
+                 />
+                 <Button 
+                   onClick={sendMessage}
+                   disabled={loading || !input.trim()}
+                   className="absolute right-2 w-12 h-12 bg-primary hover:bg-primary-container text-white rounded-full p-0 flex items-center justify-center shadow-lg transition-transform active:scale-95 border-none"
+                 >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
+                 </Button>
+              </div>
+              <p className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-4">Powered by Modern Estate LLM • KRA Compliant</p>
+           </div>
+        </section>
+
+        {/* Curation Display */}
+        <section className={`w-full lg:w-96 flex flex-col gap-6 ${houses.length === 0 ? 'hidden lg:flex' : ''}`}>
+           <div className="bg-tertiary/10 rounded-3xl p-8 border border-tertiary/10">
+              <h3 className="font-headline font-black text-tertiary text-xl mb-2">Discovery Card</h3>
+              <p className="text-slate-500 text-sm font-medium">As you chat, I will curate matching properties in real-time right here.</p>
+           </div>
+
+           {houses.length > 0 ? (
+              <ScrollArea className="flex-1">
+                 <div className="space-y-6">
+                    {houses.map(h => (
+                      <Card key={h.id} className="rounded-2xl border-none shadow-md overflow-hidden group hover:ring-2 ring-primary/20 transition-all cursor-pointer" onClick={() => navigate(`/houses/${h.id}`)}>
+                         <div className="h-32 relative">
+                            <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src={h.images?.[0] || 'https://lh3.googleusercontent.com/ia-m/AIda-public/home_placeholder.png'} alt={h.title} />
+                            <Badge className="absolute top-2 right-2 bg-secondary text-white border-none text-[8px] font-black uppercase tracking-widest px-2 py-0.5">Verified</Badge>
+                         </div>
+                         <CardContent className="p-4">
+                            <h4 className="font-bold text-primary font-headline text-sm line-clamp-1">{h.title}</h4>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">{h.county}</p>
+                            <span className="text-base font-black text-tertiary">{formatCurrency(h.rent)}</span>
+                         </CardContent>
+                      </Card>
+                    ))}
+                 </div>
+              </ScrollArea>
+           ) : (
+              <div className="flex-1 flex flex-col items-center justify-center opacity-20 grayscale">
+                 <span className="material-symbols-outlined text-8xl mb-4">search_insights</span>
+                 <p className="font-black font-headline text-lg uppercase tracking-tighter">Waiting for specs</p>
+              </div>
+           )}
+        </section>
       </div>
 
-      {error && <div className="alert alert-error" style={{ marginTop: 12 }}>{error}</div>}
-
-      {houses.length > 0 && (
-        <div style={{ marginTop: 24 }} className="panel">
-          <h2>Matching Listings</h2>
-          <div className="houses-grid">
-            {houses.map((house) => (
-              <div key={house.id} className="house-card">
-                <div className="house-card-body">
-                  <h3>{house.title}</h3>
-                  <p className="house-card-location">📍 {house.location_name || house.county || 'Kenya'}</p>
-                  <p className="house-card-price">
-                    {formatCurrency(house.rent)} <span>/month</span>
-                  </p>
-                  <p className="house-card-meta">
-                    🛏️ {house.bedrooms} BR | 🚿 {house.bathrooms} BA
-                  </p>
-
-                  <button className="btn btn-primary" style={{ marginTop: 10 }} type="button" onClick={() => requestBooking(house.id)}>
-                    Request Booking
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+      {error && <Badge variant="destructive" className="mt-4 p-4 w-full rounded-xl">{error}</Badge>}
+    </main>
   );
 }
-

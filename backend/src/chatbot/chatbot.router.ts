@@ -8,3 +8,4 @@ chatbotSessionsRouter.get('/:sessionId', sessionController.getSession);
 chatbotSessionsRouter.post('/', sessionController.createSession);
 chatbotSessionsRouter.put('/:sessionId', sessionController.updateSession);
 chatbotSessionsRouter.delete('/:sessionId', sessionController.deleteSession);
+chatbotSessionsRouter.post('/message', sessionController.sendMessage);

@@ -58,3 +58,12 @@ export const deletePayment = async (c: Context) => {
     return c.json({ error: error.message }, 500);
   }
 };
+
+export const getRevenue = async (c: Context) => {
+  try {
+    const result = await paymentService.getRevenue();
+    return c.json({ data: result }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};

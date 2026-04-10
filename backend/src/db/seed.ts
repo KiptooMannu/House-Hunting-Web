@@ -20,249 +20,129 @@ const db = drizzle(client);
 
 async function seed() {
   await client.connect();
+  console.log('🌱 Clearing existing data...');
+  await db.delete(auditLogs);
+  await db.delete(complianceLogs);
+  await db.delete(payments);
+  await db.delete(bookings);
+  await db.delete(chatbotSessions);
+  await db.delete(houseImages);
+  await db.delete(houses);
+  await db.delete(locations);
+  await db.delete(auth);
+  await db.delete(users);
+  
   console.log('🌱 Seeding database...');
 
-  // ------------------- USERS -------------------
-  const existingUsers = await db.select().from(users);
-  if (existingUsers.length === 0) {
-    const userData = [
-      { fullName: 'John Mwangi', email: 'john@example.com', phone: '254711223344', nationalId: '12345678', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Nairobi' },
-      { fullName: 'Mary Wanjiku', email: 'mary@example.com', phone: '254722334455', nationalId: '23456789', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Kiambu' },
-      { fullName: 'Peter Omondi', email: 'peter@example.com', phone: '254733445566', nationalId: '34567890', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Kisumu' },
-      { fullName: 'Grace Atieno', email: 'grace@example.com', phone: '254744556677', nationalId: '45678901', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Mombasa' },
-      { fullName: 'James Kariuki', email: 'james@example.com', phone: '254755667788', nationalId: '56789012', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Nakuru' },
-      { fullName: 'Lucy Muthoni', email: 'lucy@example.com', phone: '254766778899', nationalId: '67890123', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Eldoret' },
-      { fullName: 'David Maina', email: 'david@example.com', phone: '254777889900', nationalId: '78901234', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Thika' },
-      { fullName: 'Sarah Chebet', email: 'sarah@example.com', phone: '254788990011', nationalId: '89012345', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Kericho' },
-      { fullName: 'Admin User', email: 'admin@example.com', phone: '254799001122', nationalId: '90123456', role: 'admin' as any, accountStatus: 'active' as any, region: 'Nairobi' },
-      { fullName: 'Joseph Ngugi', email: 'joseph@example.com', phone: '254710112233', nationalId: '01234567', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Nyeri' },
-    ];
-    const insertedUsers = await db.insert(users).values(userData as any).returning();
-    console.log(`✅ Created ${insertedUsers.length} users`);
+  // 1. USERS
+  const userData = [
+    { fullName: 'John Mwangi', email: 'john@example.com', phone: '254711223344', nationalId: '12345678', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Nairobi' },
+    { fullName: 'Mary Wanjiku', email: 'mary@example.com', phone: '254722334455', nationalId: '23456789', role: 'seeker' as any, accountStatus: 'active' as any, region: 'Kiambu' },
+    { fullName: 'Peter Omondi', email: 'peter@example.com', phone: '254733445566', nationalId: '34567890', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Kisumu' },
+    { fullName: 'Grace Atieno', email: 'grace@example.com', phone: '254744556677', nationalId: '45678901', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Mombasa' },
+    { fullName: 'Admin User', email: 'admin@example.com', phone: '254799001122', nationalId: '90123456', role: 'admin' as any, accountStatus: 'active' as any, region: 'Nairobi' },
+    { fullName: 'Maina Kamau', email: 'landlord@example.com', phone: '254712345678', nationalId: '11223344', role: 'landlord' as any, accountStatus: 'active' as any, region: 'Nairobi' },
+  ];
+  const insertedUsers = await db.insert(users).values(userData as any).returning();
 
-    // ------------------- AUTH -------------------
-    for (const user of insertedUsers) {
-      const tempPassword = user.email === 'admin@example.com' ? 'Admin@123' : 'Temp@123';
-      const passwordHash = await bcrypt.hash(tempPassword, 12);
-      await db.insert(auth).values({
-        userId: user.userId,
-        passwordHash,
-        isTemporaryPassword: user.email !== 'admin@example.com',
-      });
-    }
-    console.log(`✅ Created auth records for ${insertedUsers.length} users`);
-  } else {
-    console.log('⚠️ Users already exist, skipping...');
+  // 2. AUTH
+  for (const user of insertedUsers) {
+    const pass = user.email === 'admin@example.com' ? 'Admin@123' : 'Temp@123';
+    const passwordHash = await bcrypt.hash(pass, 12);
+    await db.insert(auth).values({
+      userId: user.userId,
+      passwordHash,
+      isTemporaryPassword: false,
+    });
   }
 
-  // ------------------- LOCATIONS -------------------
-  const existingLocations = await db.select().from(locations);
-  if (existingLocations.length === 0) {
-    const locationData = [
-      { county: 'Nairobi', subCounty: 'Westlands', town: 'Westlands', neighborhood: 'Mvuli', gpsLatitude: '-1.267', gpsLongitude: '36.803' },
-      { county: 'Kiambu', subCounty: 'Kiambu Town', town: 'Kiambu', neighborhood: 'Tigoni', gpsLatitude: '-1.152', gpsLongitude: '36.835' },
-      { county: 'Kisumu', subCounty: 'Kisumu Central', town: 'Kisumu', neighborhood: 'Milimani', gpsLatitude: '-0.091', gpsLongitude: '34.768' },
-      { county: 'Mombasa', subCounty: 'Mvita', town: 'Mombasa', neighborhood: 'Nyali', gpsLatitude: '-4.043', gpsLongitude: '39.668' },
-      { county: 'Nakuru', subCounty: 'Nakuru East', town: 'Nakuru', neighborhood: 'Milimani', gpsLatitude: '-0.303', gpsLongitude: '36.080' },
-      { county: 'Uasin Gishu', subCounty: 'Eldoret East', town: 'Eldoret', neighborhood: 'Kapsoya', gpsLatitude: '0.514', gpsLongitude: '35.270' },
-      { county: 'Tharaka Nithi', subCounty: 'Tharaka', town: 'Chuka', neighborhood: 'Kangeta', gpsLatitude: '-0.344', gpsLongitude: '37.644' },
-      { county: 'Kericho', subCounty: 'Kericho Town', town: 'Kericho', neighborhood: 'Kapsoit', gpsLatitude: '-0.367', gpsLongitude: '35.283' },
-      { county: 'Nyeri', subCounty: 'Nyeri Town', town: 'Nyeri', neighborhood: 'Ruringu', gpsLatitude: '-0.419', gpsLongitude: '36.951' },
-      { county: 'Machakos', subCounty: 'Machakos Town', town: 'Machakos', neighborhood: 'Kaloleni', gpsLatitude: '-1.517', gpsLongitude: '37.267' },
-    ];
-    const insertedLocations = await db.insert(locations).values(locationData as any).returning();
-    console.log(`✅ Created ${insertedLocations.length} locations`);
-  } else {
-    console.log('⚠️ Locations already exist, skipping...');
+  // 3. LOCATIONS
+  const locationData = [
+    { county: 'Nairobi', subCounty: 'Westlands', town: 'Westlands', neighborhood: 'Riverside', gpsLatitude: '-1.267', gpsLongitude: '36.803' },
+    { county: 'Nairobi', subCounty: 'Dagoretti', town: 'Karen', neighborhood: 'Karen End', gpsLatitude: '-1.320', gpsLongitude: '36.700' },
+    { county: 'Nairobi', subCounty: 'Kilimani', town: 'Kilimani', neighborhood: 'State House', gpsLatitude: '-1.292', gpsLongitude: '36.791' },
+    { county: 'Nairobi', subCounty: 'Lavington', town: 'Lavington', neighborhood: 'James Gichuru', gpsLatitude: '-1.278', gpsLongitude: '36.769' },
+    { county: 'Nairobi', subCounty: 'Runda', town: 'Runda', neighborhood: 'Evergreen', gpsLatitude: '-1.222', gpsLongitude: '36.820' },
+    { county: 'Nairobi', subCounty: 'Kileleshwa', town: 'Kileleshwa', neighborhood: 'Kandara Road', gpsLatitude: '-1.282', gpsLongitude: '36.786' },
+  ];
+  const insertedLocations = await db.insert(locations).values(locationData as any).returning();
+
+  // 4. HOUSES
+  const landlords = insertedUsers.filter(u => u.role === 'landlord' || u.role === 'admin');
+  const houseData = [];
+  
+  const titles = [
+    'The Skye Residence', 'Azure Penthouse', 'Ivory Terrace', 'The Obsidian Loft', 
+    'Emerald Oasis', 'Savanna Heights', 'Crimson Villa', 'Silverstone Suite', 
+    'Golden Gate Mansion', 'Willow Creek Bungalow', 'Marble Arch Studio', 'Falcon Nest', 
+    'Riverbend Estate', 'Sunset Ridge', 'Crystal Waters', 'Palisades Park', 
+    'Royal Garden', 'Urban Sanctuary', 'Skyline View', 'Harbor Light', 
+    'Alpine Lodge', 'Desert Rose', 'Ocean Mist', 'Grand Vista', 
+    'Maple Leaf', 'Oakwood Manor', 'Pine Valley', 'Cedar Ridge', 
+    'Breezy Point', 'Serene Valley'
+  ];
+
+  for (let i = 0; i < 30; i++) {
+    const loc = insertedLocations[i % insertedLocations.length];
+    const landlord = landlords[i % landlords.length];
+    houseData.push({
+      landlordId: landlord.userId,
+      locationId: loc.locationId,
+      title: `${titles[i]} - ${loc.town}`,
+      description: `Premium ${titles[i]} offering unmatched luxury and comfort. Features high-end finishes, smart home tech, and panoramic views of ${loc.town}. Large windows allow for natural lighting, and the open-plan kitchen is perfect for gourmet cooking.`,
+      houseType: ['bedsitter', 'one_bedroom', 'two_bedroom', 'three_bedroom', 'mansion', 'bungalow', 'studio'][i % 7] as any,
+      furnishing: ['furnished', 'semi_furnished', 'unfurnished'][i % 3] as any,
+      bedrooms: (i % 5) + 1,
+      bathrooms: (i % 4) + 1,
+      monthlyRent: (25000 + (i * 5000)).toString(),
+      dailyRate: (2500 + (i * 200)).toString(),
+      depositAmount: (50000 + (i * 2000)).toString(),
+      isDepositNegotiable: i % 2 === 0,
+      addressLine: `${100 + i} ${loc.neighborhood} Road, ${loc.town}`,
+      amenities: JSON.stringify(['wifi', 'parking', 'gym', 'pool', 'security', 'elevator'].slice(0, (i % 6) + 1)),
+      status: 'active' as any,
+      isVerified: true,
+      verifiedById: landlords[0].userId,
+      verifiedAt: new Date(),
+    });
   }
 
-  // Get inserted IDs after potential inserts
-  const allUsers = await db.select().from(users);
-  const allLocations = await db.select().from(locations);
+  const insertedHouses = await db.insert(houses).values(houseData as any).returning();
+  console.log(`✅ Created ${insertedHouses.length} premium houses`);
 
-  // ------------------- HOUSES -------------------
-  const existingHouses = await db.select().from(houses);
-  if (existingHouses.length === 0) {
-    const landlords = allUsers.filter((u) => u.role === 'landlord');
-    const houseData = [];
-    for (let i = 0; i < 10; i++) {
-      const landlord = landlords[i % landlords.length];
-      const location = allLocations[i % allLocations.length];
-      houseData.push({
-        landlordId: landlord.userId,
-        locationId: location.locationId,
-        title: `${['Cozy', 'Spacious', 'Modern', 'Luxury', 'Affordable'][i % 5]} ${
-          ['Bedsitter', '1 Bedroom', '2 Bedroom', '3 Bedroom'][i % 4]
-        } in ${location.neighborhood}`,
-        description: 'A beautiful house with great amenities.',
-        houseType: ['bedsitter', 'one_bedroom', 'two_bedroom', 'three_bedroom'][i % 4] as any,
-        furnishing: ['furnished', 'semi_furnished', 'unfurnished'][i % 3] as any,
-        bedrooms: i % 4,
-        bathrooms: (i % 3) + 1,
-        monthlyRent: (10000 + i * 2000).toString(),
-        depositAmount: (5000 + i * 1000).toString(),
-        isDepositNegotiable: i % 2 === 0,
-        addressLine: `House ${i + 1}, ${location.neighborhood}`,
-        amenities: JSON.stringify(['wifi', 'parking', 'water'].slice(0, (i % 3) + 1)),
-        status: 'active' as any,
-      });
-    }
-    const insertedHouses = await db.insert(houses).values(houseData as any).returning();
-    console.log(`✅ Created ${insertedHouses.length} houses`);
-  } else {
-    console.log('⚠️ Houses already exist, skipping...');
-  }
+  // 5. HOUSE IMAGES (3 PER HOUSE)
+  const propertyImages = [
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
+    'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b',
+    'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d',
+    'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0',
+    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3',
+    'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde',
+    'https://images.unsplash.com/photo-1600573472591-ee6b68d14c68',
+    'https://images.unsplash.com/photo-1600585154542-637936dcf453',
+    'https://images.unsplash.com/photo-1600121848594-d8644e57abab',
+    'https://images.unsplash.com/photo-1600566752355-35792bed65ee',
+    'https://images.unsplash.com/photo-1600585154363-67eb9e2e2099',
+    'https://images.unsplash.com/photo-1600607687644-c7171b42498f'
+  ];
 
-  const allHouses = await db.select().from(houses);
-
-  // ------------------- HOUSE IMAGES -------------------
-  const existingImages = await db.select().from(houseImages);
-  if (existingImages.length === 0) {
-    const imageData = [];
-    for (const house of allHouses) {
-      for (let i = 0; i < 2; i++) {
-        imageData.push({
-          houseId: house.houseId,
-          imageUrl: `https://picsum.photos/id/${house.houseId + i}/800/600`,
-          caption: `View ${i + 1} of ${house.title}`,
-          isPrimary: i === 0,
-          sortOrder: i,
-        });
-      }
-    }
-    await db.insert(houseImages).values(imageData as any);
-    console.log(`✅ Created ${imageData.length} house images`);
-  } else {
-    console.log('⚠️ House images already exist, skipping...');
-  }
-
-  // ------------------- CHATBOT SESSIONS -------------------
-  const existingSessions = await db.select().from(chatbotSessions);
-  if (existingSessions.length === 0) {
-    const seekers = allUsers.filter((u) => u.role === 'seeker');
-    const sessionData = [];
-    for (let i = 0; i < 10; i++) {
-      const seeker = seekers[i % seekers.length];
-      sessionData.push({
-        userId: seeker.userId,
-        sessionToken: `token_${Date.now()}_${i}`,
-        status: 'completed' as any,
-        preferredCounty: allLocations[i % allLocations.length].county,
-        budgetMin: (15000 + i * 1000).toString(),
-        budgetMax: (30000 + i * 2000).toString(),
-        preferredHouseType: ['bedsitter', 'one_bedroom', 'two_bedroom'][i % 3] as any,
-        conversationHistory: JSON.stringify([{ role: 'user', content: 'Looking for a house' }]),
-        resultHouseIds: JSON.stringify(allHouses.slice(0, 3).map((h) => h.houseId)),
-        completedAt: new Date(),
-      });
-    }
-    await db.insert(chatbotSessions).values(sessionData as any);
-    console.log(`✅ Created ${sessionData.length} chatbot sessions`);
-  } else {
-    console.log('⚠️ Chatbot sessions already exist, skipping...');
-  }
-
-  const allSessions = await db.select().from(chatbotSessions);
-
-  // ------------------- BOOKINGS -------------------
-  const existingBookings = await db.select().from(bookings);
-  if (existingBookings.length === 0) {
-    const seekers = allUsers.filter((u) => u.role === 'seeker');
-    const bookingData = [];
-    for (let i = 0; i < 10; i++) {
-      const seeker = seekers[i % seekers.length];
-      const house = allHouses[i % allHouses.length];
-      const session = allSessions[i % allSessions.length];
-      bookingData.push({
-        seekerId: seeker.userId,
+  const imageData = [];
+  for (const house of insertedHouses) {
+    // 5 unique images per house from the set
+    for (let j = 0; j < 5; j++) {
+      imageData.push({
         houseId: house.houseId,
-        chatbotSessionId: session.sessionId,
-        status: 'confirmed' as any,
-        bookingFee: (1000 + i * 200).toString(),
-        moveInDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        specialRequests: 'Please provide parking',
-        confirmedAt: new Date(),
+        imageUrl: propertyImages[(house.houseId * 5 + j) % propertyImages.length] + '?auto=format&fit=crop&q=80&w=1200',
+        caption: j === 0 ? `Exterior of ${house.title}` : `Interior View ${j} of ${house.title}`,
+        isPrimary: j === 0,
+        sortOrder: j,
       });
     }
-    await db.insert(bookings).values(bookingData as any);
-    console.log(`✅ Created ${bookingData.length} bookings`);
-  } else {
-    console.log('⚠️ Bookings already exist, skipping...');
   }
+  await db.insert(houseImages).values(imageData as any);
+  console.log(`✅ Added ${imageData.length} curated images (3 per house)`);
 
-  const allBookings = await db.select().from(bookings);
-
-  // ------------------- PAYMENTS -------------------
-  const existingPayments = await db.select().from(payments);
-  if (existingPayments.length === 0) {
-    const paymentData = [];
-    for (let i = 0; i < 10; i++) {
-      const booking = allBookings[i % allBookings.length];
-      const payer = allUsers.find((u) => u.userId === booking.seekerId);
-      paymentData.push({
-        bookingId: booking.bookingId,
-        payerId: payer!.userId,
-        amount: (1500 + i * 100).toString(),
-        method: 'mpesa' as any,
-        status: 'completed' as any,
-        mpesaPhoneNumber: '254712345678',
-        mpesaReceiptNumber: `REC${Date.now()}${i}`,
-        paidAt: new Date(),
-        idempotencyKey: `idem_${Date.now()}_${i}`,
-      });
-    }
-    await db.insert(payments).values(paymentData as any);
-    console.log(`✅ Created ${paymentData.length} payments`);
-  } else {
-    console.log('⚠️ Payments already exist, skipping...');
-  }
-
-  // ------------------- COMPLIANCE LOGS -------------------
-  const existingCompliance = await db.select().from(complianceLogs);
-  if (existingCompliance.length === 0) {
-    const admin = allUsers.find((u) => u.role === 'admin');
-    const logData = [];
-    for (let i = 0; i < 10; i++) {
-      logData.push({
-        initiatedById: admin!.userId,
-        action: (i % 2 === 0 ? 'revenue_report' : 'nil_filing') as any,
-        status: 'submitted' as any,
-        periodStart: new Date(2024, i % 12, 1).toISOString().split('T')[0], // YYYY-MM-DD
-        periodEnd: new Date(2024, (i % 12) + 1, 0).toISOString().split('T')[0], // last day of month
-        totalRevenueKes: (10000 * (i + 1)).toString(),
-        totalBookingFees: (500 * (i + 1)).toString(),
-        gavaConnectRequestId: `gava_${Date.now()}_${i}`,
-        acknowledgedAt: new Date(),
-      });
-    }
-    await db.insert(complianceLogs).values(logData as any);
-    console.log(`✅ Created ${logData.length} compliance logs`);
-  } else {
-    console.log('⚠️ Compliance logs already exist, skipping...');
-  }
-
-  // ------------------- AUDIT LOGS -------------------
-  const existingAudit = await db.select().from(auditLogs);
-  if (existingAudit.length === 0) {
-    const auditData = [];
-    for (let i = 0; i < 10; i++) {
-      const user = allUsers[i % allUsers.length];
-      auditData.push({
-        performedById: user.userId,
-        action: ['login', 'create', 'update', 'delete'][i % 4] as any,
-        tableName: ['users', 'houses', 'bookings'][i % 3],
-        recordId: `${i + 1}`,
-        ipAddress: `192.168.1.${i}`,
-        userAgent: 'Mozilla/5.0 (seed script)',
-      });
-    }
-    await db.insert(auditLogs).values(auditData as any);
-    console.log(`✅ Created ${auditData.length} audit logs`);
-  } else {
-    console.log('⚠️ Audit logs already exist, skipping...');
-  }
-
-  console.log('🌱 Seeding completed!');
+  console.log('🚀 Seeding Completed Successfully with Multi-Image Support!');
   await client.end();
 }
 
