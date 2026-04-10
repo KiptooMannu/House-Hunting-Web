@@ -79,9 +79,9 @@ export default function App() {
             }
           />
           <Route
-            path="/landlord/create-listing"
+            path="/landlord/create"
             element={
-              <ProtectedRoute allowedRoles={['landlord']}>
+              <ProtectedRoute allowedRoles={['landlord', 'admin']}>
                 <CreateListing />
               </ProtectedRoute>
             }

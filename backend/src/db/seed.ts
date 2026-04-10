@@ -85,6 +85,10 @@ async function seed() {
   for (let i = 0; i < 30; i++) {
     const loc = insertedLocations[i % insertedLocations.length];
     const landlord = landlords[i % landlords.length];
+    const baseRent = i < 5 ? 15000 : i < 15 ? 45000 : i < 25 ? 120000 : 350000;
+    const variation = (i % 10) * 10000;
+    const rent = baseRent + variation;
+
     houseData.push({
       landlordId: landlord.userId,
       locationId: loc.locationId,
@@ -94,9 +98,9 @@ async function seed() {
       furnishing: ['furnished', 'semi_furnished', 'unfurnished'][i % 3] as any,
       bedrooms: (i % 5) + 1,
       bathrooms: (i % 4) + 1,
-      monthlyRent: (25000 + (i * 5000)).toString(),
-      dailyRate: (2500 + (i * 200)).toString(),
-      depositAmount: (50000 + (i * 2000)).toString(),
+      monthlyRent: rent.toString(),
+      dailyRate: (rent / 15).toFixed(0),
+      depositAmount: (rent * 1.5).toFixed(0),
       isDepositNegotiable: i % 2 === 0,
       addressLine: `${100 + i} ${loc.neighborhood} Road, ${loc.town}`,
       amenities: JSON.stringify(['wifi', 'parking', 'gym', 'pool', 'security', 'elevator'].slice(0, (i % 6) + 1)),

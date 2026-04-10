@@ -88,16 +88,16 @@ export default function HouseListings() {
                 value={filters.county} 
                 onValueChange={(val) => setFilters({ ...filters, county: val === 'all' ? '' : val })}
               >
-                <SelectTrigger className="w-full bg-surface-container-lowest border border-slate-100 rounded-2xl py-7 px-4 text-xs font-bold focus:ring-4 focus:ring-secondary/5 transition-all outline-none">
+                <SelectTrigger className="w-full bg-surface-container-lowest border border-slate-100 rounded-2xl py-7 px-4 text-xs font-bold focus:ring-4 focus:ring-secondary/5 transition-all outline-none relative z-10">
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary/30 text-lg">travel_explore</span>
                     <SelectValue placeholder="Select a curated area..." />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl border-slate-100 shadow-2xl font-manrope">
-                  <SelectItem value="all" className="text-xs font-bold py-3">All Regions</SelectItem>
+                <SelectContent position="popper" sideOffset={10} className="rounded-[2rem] border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.1)] font-manrope bg-white/95 backdrop-blur-xl z-[100] w-[--radix-select-trigger-width]">
+                  <SelectItem value="all" className="text-xs font-bold py-4 focus:bg-slate-50 rounded-xl transition-colors">All Regions</SelectItem>
                   {townsData?.map((town: string) => (
-                    <SelectItem key={town} value={town} className="text-xs font-bold py-3 capitalize">
+                    <SelectItem key={town} value={town} className="text-xs font-bold py-4 capitalize focus:bg-slate-50 rounded-xl transition-colors">
                       {town}
                     </SelectItem>
                   ))}
@@ -112,13 +112,13 @@ export default function HouseListings() {
                 <Slider 
                   value={[filters.maxRent]} 
                   max={500000} 
-                  min={20000} 
+                  min={10000} 
                   step={5000} 
                   onValueChange={(val) => setFilters({ ...filters, maxRent: val[0] })}
                   className="py-4"
                 />
                 <div className="flex justify-between mt-2 text-[10px] font-black tracking-widest text-primary/40 uppercase">
-                  <span>20K</span>
+                  <span>10K</span>
                   <span className="text-secondary">{formatCurrency(filters.maxRent)}</span>
                 </div>
               </div>

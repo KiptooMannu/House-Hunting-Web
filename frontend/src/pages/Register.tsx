@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRegisterMutation } from '../store/apiSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function Register() {
+  const [searchParams] = useSearchParams();
+  const initialRole = searchParams.get('role') === 'landlord' ? 'landlord' : 'seeker';
+  
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    fullName: '', email: '', password: '', role: 'seeker', phone: ''
+    fullName: '', email: '', password: '', role: initialRole, phone: ''
   });
   const [error, setError] = useState('');
   

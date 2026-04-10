@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useLoginMutation } from '../store/apiSlice';
 import { setCredentials } from '../store/authSlice';
@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 export default function Login() {
+  const [searchParams] = useSearchParams();
+  const showLandlordMsg = searchParams.get('message') === 'landlord_required';
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -50,12 +53,27 @@ export default function Login() {
            <div className="absolute inset-0 bg-primary/40 backdrop-blur-[2px] flex flex-col justify-end p-12 text-left">
               <Badge className="bg-secondary text-white w-fit mb-4 border-none px-4 py-1.5 rounded-full font-bold uppercase tracking-widest text-[10px]">Verified Portal</Badge>
               <h2 className="text-4xl font-headline font-black text-white leading-tight tracking-tighter mb-4">Kenya's Most Secure Real Estate Intelligence.</h2>
-              <p className="text-white/80 font-medium">Log in to manage your portfolio or continue your curated property search.</p>
+              <h1 className="text-white/80 font-medium font-inter">Log in to manage your portfolio or continue your curated property search.</h1>
            </div>
         </div>
 
         {/* Form Side */}
         <div className="p-8 md:p-16 flex flex-col justify-center text-left">
+          {showLandlordMsg && (
+            <div className="mb-10 p-6 bg-secondary/5 border-l-4 border-secondary rounded-r-2xl animate-in fade-in slide-in-from-left-4">
+               <div className="flex items-start gap-4">
+                 <span className="material-symbols-outlined text-secondary text-3xl">real_estate_agent</span>
+                 <div>
+                    <h4 className="text-secondary font-black text-sm uppercase tracking-widest leading-none mb-2">Curator Access Required</h4>
+                    <p className="text-on-surface-variant text-xs font-bold leading-relaxed">
+                      To list properties, you must be registered as an authorized **Landlord**. 
+                      Please sign in to your curator account or <Link to="/register?role=landlord" className="text-secondary underline decoration-2 underline-offset-4">Register as a Landlord</Link> to begin.
+                    </p>
+                 </div>
+               </div>
+            </div>
+          )}
+
           <div className="mb-10">
             <h1 className="text-3xl font-black font-headline text-primary tracking-tight mb-2">Welcome Back</h1>
             <p className="text-slate-400 font-medium">Enter your credentials to access your estate hub.</p>

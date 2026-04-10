@@ -1,14 +1,59 @@
 import { eq, desc, asc, and, sql } from 'drizzle-orm';
 import { db } from '../db/db.js';
-import { houses } from '../db/schema.js';
+import { houses, locations, houseImages } from '../db/schema.js';
 
 // Mapping of sortable column names to actual column names in DB
 const sortableColumns = ['monthly_rent', 'bedrooms', 'view_count', 'booking_count', 'updated_at', 'created_at'] as const;
 type SortableColumn = typeof sortableColumns[number];
 
-export const createHouse = async (data: any) => {
-  const [newHouse] = await db.insert(houses).values(data).returning();
-  return newHouse;
+export const createHouse = async (input: any) => {
+  const { imageUrls, locationName, county, ...houseData } = input;
+
+  return await db.transaction(async (tx) => {
+    // 1. Resolve Location
+    // We try to find an existing location or create a new one
+    let locationId = houseData.locationId;
+    
+    if (!locationId && locationName && county) {
+      const existing = await tx.select().from(locations)
+        .where(and(
+          eq(locations.town, locationName),
+          eq(locations.county, county)
+        ))
+        .limit(1);
+
+      if (existing.length > 0) {
+        locationId = existing[0].locationId;
+      } else {
+        const [newLoc] = await tx.insert(locations).values({
+          town: locationName,
+          county: county,
+          neighborhood: locationName,
+        }).returning();
+        locationId = newLoc.locationId;
+      }
+    }
+
+    // 2. Insert House
+    const [newHouse] = await tx.insert(houses).values({
+      ...houseData,
+      locationId: locationId,
+      status: 'active', // Default to active for new curated listings
+    }).returning();
+
+    // 3. Insert Images
+    if (imageUrls && imageUrls.length > 0) {
+      const imageRecords = imageUrls.map((url: string, idx: number) => ({
+        houseId: newHouse.houseId,
+        imageUrl: url,
+        isPrimary: idx === 0,
+        sortOrder: idx,
+      }));
+      await tx.insert(houseImages).values(imageRecords);
+    }
+
+    return { ...newHouse, images: imageUrls };
+  });
 };
 
 export const getHouse = async (houseId: number) => {

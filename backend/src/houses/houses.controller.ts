@@ -1,6 +1,7 @@
 // src/modules/houses/houses.controller.ts
 import { Context } from 'hono';
 import * as houseService from './houses.service.js';
+import { uploadImage } from '../utils/cloudinary.js';
 import {
   createHouseSchema,
   updateHouseSchema,
@@ -10,15 +11,74 @@ import {
 
 export const createHouse = async (c: Context) => {
   try {
-    const body = await c.req.json();
-    const validatedData = createHouseSchema.parse(body);
+    const contentType = c.req.header('content-type') || '';
+    let data: any = {};
+    let files: any[] = [];
+
+    if (contentType.includes('multipart/form-data')) {
+      const body = await c.req.parseBody();
+      
+      // Extract non-file fields
+      data = {
+        title: body['title'],
+        description: body['description'],
+        houseType: body['houseType'],
+        furnishing: body['furnishing'] || 'unfurnished',
+        bedrooms: body['bedrooms'],
+        bathrooms: body['bathrooms'],
+        monthlyRent: body['rent'] || body['monthlyRent'],
+        dailyRate: body['dailyRate'],
+        county: body['county'],
+        locationName: body['locationName'],
+        amenities: body['amenities'] || body['amenities[]'],
+      };
+
+      // Handle multiple images
+      const imagesField = body['images'];
+      if (imagesField) {
+        if (Array.isArray(imagesField)) {
+          files = imagesField;
+        } else {
+          files = [imagesField];
+        }
+      }
+    } else {
+      data = await c.req.json();
+    }
+
+    // Validate the core house data
+    // We parse strings to numbers where needed since FormData sends everything as strings
+    const validatedData = createHouseSchema.parse({
+      ...data,
+      bedrooms: data.bedrooms ? Number(data.bedrooms) : undefined,
+      bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
+      monthlyRent: data.monthlyRent ? Number(data.monthlyRent) : undefined,
+      dailyRate: data.dailyRate ? Number(data.dailyRate) : undefined,
+    });
+
     const landlordId = c.get('userId');
+
+    // Upload images to Cloudinary
+    const imageUrls: string[] = [];
+    for (const file of files) {
+       if (file instanceof File) {
+         const buffer = Buffer.from(await file.arrayBuffer());
+         const url = await uploadImage(buffer);
+         imageUrls.push(url);
+       }
+    }
+
     const result = await houseService.createHouse({
       ...validatedData,
       landlordId,
+      imageUrls, // Pass explicitly to service to handle image mapping
+      locationName: data.locationName,
+      county: data.county
     });
+
     return c.json(result, 201);
   } catch (error: any) {
+    console.error('❌ [createHouse] Error:', error);
     if (error.name === 'ZodError') {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
     }
