@@ -76,3 +76,16 @@ export const getProfile = async (c: Context) => {
     return c.json({ error: error.message }, 500);
   }
 };
+
+export const updateProfile = async (c: Context) => {
+  try {
+    const userId = c.get('userId');
+    const updates = updateUserSchema.parse(await c.req.json());
+    const updated = await userService.updateUser(userId, updates);
+    if (!updated) return c.json({ error: 'User not found' }, 404);
+    return c.json({ user: updated }, 200);
+  } catch (error: any) {
+    if (error.name === 'ZodError') return c.json({ error: 'Validation failed', details: error.errors }, 400);
+    return c.json({ error: error.message }, 400);
+  }
+};

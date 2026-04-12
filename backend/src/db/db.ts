@@ -1,5 +1,5 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import * as schema from './schema.js';
 import "dotenv/config";
 
@@ -7,5 +7,9 @@ if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is missing in environment variables');
 }
 
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql, { schema });
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // Neon/Cloud DBs often require this
+});
+
+export const db = drizzle(pool, { schema });

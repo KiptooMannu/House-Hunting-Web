@@ -10,7 +10,9 @@ export default function ProtectedRoute({ children, allowedRoles }: { children: R
 
   if (!isAuth) {
     console.warn('🛡️ [ProtectedRoute] Not authenticated, redirecting to /login');
-    return <Navigate to="/login" replace />;
+    // Save current location for post-login redirect
+    const from = window.location.pathname + window.location.search;
+    return <Navigate to="/login" state={{ from }} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes((user as any)?.role)) {

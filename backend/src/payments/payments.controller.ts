@@ -61,7 +61,8 @@ export const deletePayment = async (c: Context) => {
 
 export const getRevenue = async (c: Context) => {
   try {
-    const result = await paymentService.getRevenue();
+    const landlordId = c.req.query('landlordId') ? parseInt(c.req.query('landlordId')!) : undefined;
+    const result = await paymentService.getRevenue(landlordId);
     return c.json({ data: result }, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

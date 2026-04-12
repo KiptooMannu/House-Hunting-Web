@@ -63,7 +63,7 @@ export const sendMessage = async (c: Context) => {
   try {
     const { message } = await c.req.json();
     const response = await sessionService.getChatResponse(message);
-    return c.json({ response }, 200);
+    return c.json({ data: response }, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }

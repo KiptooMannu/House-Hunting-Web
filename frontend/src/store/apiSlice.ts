@@ -33,6 +33,14 @@ export const apiSlice = createApi({
       query: () => '/users/profile',
       providesTags: ['User'],
     }),
+    updateProfile: builder.mutation({
+      query: (data) => ({
+        url: '/users/profile',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
 
     // House Endpoints
     getHouses: builder.query({
@@ -62,6 +70,13 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['House'],
     }),
+    deleteHouse: builder.mutation({
+      query: (id) => ({
+        url: `/houses/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['House'],
+    }),
 
     // Booking Endpoints
     getBookings: builder.query({
@@ -87,7 +102,10 @@ export const apiSlice = createApi({
 
     // Payment Endpoints
     getRevenue: builder.query({
-      query: () => '/payments/revenue',
+      query: (params) => ({
+        url: '/payments/revenue',
+        params,
+      }),
       providesTags: ['Payment'],
     }),
     createMpesaPush: builder.mutation({
@@ -150,6 +168,17 @@ export const apiSlice = createApi({
         body: data,
       }),
     }),
+
+    // Analytics Endpoints
+    getAdminStats: builder.query({
+      query: () => '/analytics/admin-stats',
+    }),
+    getMarketPulse: builder.query({
+      query: () => '/analytics/market-pulse',
+    }),
+    getNeighborhoodTrends: builder.query({
+      query: () => '/analytics/neighborhood-trends',
+    }),
   }),
 });
 
@@ -157,11 +186,13 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useGetProfileQuery,
+  useUpdateProfileMutation,
   useGetHousesQuery,
   useGetTownsQuery,
   useGetHouseByIdQuery,
   useCreateHouseMutation,
   useUpdateHouseMutation,
+  useDeleteHouseMutation,
   useGetBookingsQuery,
   useCreateBookingMutation,
   useUpdateBookingStatusMutation,
@@ -174,4 +205,7 @@ export const {
   useSendRevenueToGavaMutation,
   useSubmitNilFilingMutation,
   useValidateTccMutation,
+  useGetAdminStatsQuery,
+  useGetMarketPulseQuery,
+  useGetNeighborhoodTrendsQuery,
 } = apiSlice;

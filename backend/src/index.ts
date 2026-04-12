@@ -11,6 +11,7 @@ import { bookingsRouter } from './bookings/bookings.router.js';
 import { paymentsRouter } from './payments/payments.router.js';
 import { complianceLogsRouter } from './compliance/compliance.router.js';
 import { auditLogsRouter } from './audit_logs/audit_logs.router.js';
+import { analyticsRouter } from './analytics/analytics.router.js';
 
 const app = new Hono();
 
@@ -29,6 +30,7 @@ app.route('/api/bookings', bookingsRouter);
 app.route('/api/payments', paymentsRouter);
 app.route('/api/compliance-logs', complianceLogsRouter);
 app.route('/api/audit-logs', auditLogsRouter);
+app.route('/api/analytics', analyticsRouter);
 
 // 404 handler
 app.notFound((c) => c.json({ error: 'Route not found' }, 404));

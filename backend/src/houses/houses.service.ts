@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql } from 'drizzle-orm';
+import { eq, desc, asc, and, sql, inArray } from 'drizzle-orm';
 import { db } from '../db/db.js';
 import { houses, locations, houseImages } from '../db/schema.js';
 
@@ -106,38 +106,58 @@ export const listHouses = async (query: any) => {
   }
   
   if (search) {
-    conditions.push(sql`(${houses.title} ILIKE ${'%' + search + '%'} OR ${houses.description} ILIKE ${'%' + search + '%'})`);
+    conditions.push(sql`(${houses.title} ILIKE ${'%' + search + '%'} 
+      OR ${houses.description} ILIKE ${'%' + search + '%'}
+      OR ${locations.county} ILIKE ${'%' + search + '%'}
+      OR ${locations.town} ILIKE ${'%' + search + '%'}
+      OR ${locations.neighborhood} ILIKE ${'%' + search + '%'})`);
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  let order;
+  let orderExpr: any;
   if (lat && lng) {
-    // Proximity search using Euclidean distance (simplified Haversine for performance)
-    order = sql`(${houses.gpsLatitude}::numeric - ${lat})^2 + (${houses.gpsLongitude}::numeric - ${lng})^2 ASC`;
+    orderExpr = sql`(${houses.gpsLatitude}::numeric - ${lat})^2 + (${houses.gpsLongitude}::numeric - ${lng})^2 ASC`;
   } else {
-    let orderColumn = 'created_at';
-    if (sortBy && sortableColumns.includes(sortBy as SortableColumn)) {
-      orderColumn = sortBy;
-    }
-    order = sql`houses.${sql.raw(orderColumn)} ${sql.raw(sortOrder)}`;
+    let orderColumn = houses.createdAt;
+    const columnMap: Record<string, any> = {
+      'monthly_rent': houses.monthlyRent,
+      'bedrooms': houses.bedrooms,
+      'view_count': houses.viewCount,
+      'booking_count': houses.bookingCount,
+      'updated_at': houses.updatedAt,
+      'created_at': houses.createdAt
+    };
+    const targetColumn = sortBy && columnMap[sortBy] ? columnMap[sortBy] : orderColumn;
+    orderExpr = sortOrder === 'desc' ? desc(targetColumn) : asc(targetColumn);
   }
 
-  const itemsQuery = db.select({
+  // Items query using select + join to support filtering on related table
+  const itemsResult = await db.select({
     house: houses,
-    location: locations
+    location: locations,
   })
     .from(houses)
     .leftJoin(locations, eq(houses.locationId, locations.locationId))
     .where(whereClause)
-    .orderBy(order)
+    .orderBy(orderExpr)
     .limit(limit)
     .offset(offset);
 
-  const rawItems = await itemsQuery;
-  const items = rawItems.map(row => ({
-    ...row.house,
-    location: row.location
+  // Fetch images for these houses
+  const houseIds = itemsResult.map(r => r.house.houseId);
+  let imagesList: any[] = [];
+  if (houseIds.length > 0) {
+    imagesList = await db.query.houseImages.findMany({
+      where: inArray(houseImages.houseId, houseIds),
+      orderBy: [asc(houseImages.sortOrder)]
+    });
+  }
+
+  const items = itemsResult.map(r => ({
+    ...r.house,
+    location: r.location,
+    images: imagesList.filter(img => img.houseId === r.house.houseId)
   }));
 
   const totalResult = await db.select({ count: sql<number>`count(*)` })

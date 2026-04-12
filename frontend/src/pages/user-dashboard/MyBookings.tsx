@@ -16,6 +16,7 @@ export default function MyBookings() {
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [payingBookingId, setPayingBookingId] = useState<number | null>(null);
+  const [error, setError] = useState('');
 
   const bookings = bookingsData ?? [];
   const savedHomes = housesData?.items?.slice(0, 2) ?? [];
@@ -172,6 +173,7 @@ export default function MyBookings() {
                   Recent Activity
                   <span className="w-2 h-2 bg-error rounded-full animate-pulse"></span>
                 </h2>
+                {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-[10px] font-bold">{error}</div>}
                 <div className="space-y-4">
                   {bookings.map((b: any) => (
                     <div key={b.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">

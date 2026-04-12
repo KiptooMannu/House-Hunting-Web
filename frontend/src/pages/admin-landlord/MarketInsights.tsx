@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useGetHousesQuery } from '../../store/apiSlice';
+import { useGetHousesQuery, useGetNeighborhoodTrendsQuery } from '../../store/apiSlice';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { useMemo } from 'react';
 
 const NEIGHBORHOOD_IMAGES = [
   'https://lh3.googleusercontent.com/aida-public/AB6AXuBzjFyTk-3ZE_6s_Kl9QQ9xIWMogvvxNNP9OEtHpxb9X5FA8A4FvtOaL2RG_BOHtx_Q_KaZwu4xudeE6dB6qwICxbcpmTwpcxrDsCZreDXts_0I_uhXVXat_-pQAnmKcxKC1mHxP-oLcdxYw18xP8aFmHhdGCJlR7JvC0tJgyVIpNJ1zQrpUV4dZEuO9d-mrVhsf2hWf9zcPQciL_ixxYfJQY0500Ub5qy5jreUH87aDsPymPrvF9vY8zswjZNpb7B8eo110y4qCvY',
@@ -13,12 +15,22 @@ const SPOTLIGHTS = [
   { name: 'Kilimani', tag: 'Emerging Value', tagClass: 'bg-tertiary-fixed-dim text-on-tertiary-fixed', desc: 'Dynamic and dense, Kilimani offers the highest ROI for short-term rental strategies and AirBnB investments.' },
 ];
 
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'];
-const BAR_HEIGHTS = [85, 55, 90, 95, 60, 98];
-
 export default function MarketInsights() {
   const { data: housesData } = useGetHousesQuery({});
+  const { data: trendData } = useGetNeighborhoodTrendsQuery({});
   const houses: any[] = housesData?.items ?? [];
+
+  const neighborhoodData = useMemo(() => {
+    if (!trendData) return [];
+    const months = Array.from(new Set(trendData.map((d: any) => d.month)));
+    return months.map(month => {
+      const entry: any = { month };
+      trendData.filter((d: any) => d.month === month).forEach((d: any) => {
+        entry[d.neighborhood] = Math.round(d.avgRent);
+      });
+      return entry;
+    });
+  }, [trendData]);
 
   const avgRent = houses.length
     ? Math.round(houses.reduce((s: number, h: any) => s + Number(h.monthlyRent), 0) / houses.length)
@@ -62,22 +74,27 @@ export default function MarketInsights() {
                 <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-tertiary inline-block" /> Kilimani</span>
               </div>
             </div>
-            <div className="h-64 flex items-end gap-3 relative">
-              <div className="absolute inset-0 flex flex-col justify-between">
-                <div className="w-full border-t border-outline-variant/10" />
-                <div className="w-full border-t border-outline-variant/10" />
-                <div className="w-full border-t border-outline-variant/10" />
-                <div className="w-full border-b border-outline-variant/20" />
-              </div>
-              {MONTHS.map((month, i) => (
-                <div key={month} className="flex-1 flex flex-col items-center justify-end gap-1">
-                  <div
-                    className="w-full rounded-t-lg bg-primary hover:bg-primary/80 transition-all cursor-pointer"
-                    style={{ height: `${BAR_HEIGHTS[i]}%` }}
+            <div className="h-64 w-full relative z-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={neighborhoodData.length > 0 ? neighborhoodData : [
+                    { month: 'Jan', Westlands: 85000, Karen: 120000, Kilimani: 65000 },
+                    { month: 'Feb', Westlands: 82000, Karen: 125000, Kilimani: 68000 },
+                  ]}
+                  margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} />
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                    cursor={{ fill: '#f1f5f9' }}
                   />
-                  <span className="text-[10px] text-center mt-2 text-on-surface-variant font-bold">{month}</span>
-                </div>
-              ))}
+                  <Bar dataKey="Westlands" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Karen" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Kilimani" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 

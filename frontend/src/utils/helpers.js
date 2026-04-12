@@ -65,3 +65,14 @@ export function truncate(str, max = 100) {
   if (!str) return '';
   return str.length > max ? str.substring(0, max) + '...' : str;
 }
+
+/**
+ * Robustly extract image URL from house image data (object or string)
+ */
+export function getHouseImage(imgData, fallback = "https://images.unsplash.com/photo-1518780664697-55e3ad937233") {
+  if (!imgData) return fallback;
+  if (typeof imgData === 'string') return imgData;
+  if (imgData.imageUrl) return imgData.imageUrl;
+  if (imgData.url) return imgData.url;
+  return fallback;
+}

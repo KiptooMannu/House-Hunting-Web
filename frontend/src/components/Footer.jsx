@@ -1,95 +1,56 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-50 pt-24 pb-12 border-t border-slate-200/60 font-manrope">
-      <div className="max-w-screen-2xl mx-auto px-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20 text-left">
-          
-          {/* Brand Vision */}
-          <div className="lg:col-span-1">
-            <Link to="/" className="text-2xl font-black text-primary tracking-tighter block mb-8">
-              Modern Estate Curator
+    <footer className="bg-white pt-32 pb-16 border-t border-slate-100 text-left font-headline">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-20 px-6 lg:px-12 max-w-[1440px] mx-auto mb-32 text-left">
+          <div className="md:col-span-1 text-left">
+            <Link to="/" className="text-xl font-black text-primary block mb-8 uppercase tracking-widest">
+                SAVANNA<span className="font-light">HORIZON</span>
             </Link>
-            <p className="text-on-surface-variant text-sm leading-relaxed opacity-70 font-medium">
-              Redefining the luxury real estate experience in Kenya through editorial presentation and intelligent technology. Partnered with the GavaConnect Protocol.
+            <p className="text-on-surface-variant text-sm font-light leading-relaxed mb-8">
+                Redefining luxury real estate in Kenya through editorial presentation and intelligent infrastructure.
             </p>
+            <div className="flex gap-4">
+              <a href="#" className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all"><span className="material-symbols-outlined text-lg">public</span></a>
+              <a href="#" className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all"><span className="material-symbols-outlined text-lg">mail</span></a>
+            </div>
           </div>
-
-          {/* Navigation Hub */}
-          <div>
-            <h5 className="font-black text-primary text-xs uppercase tracking-[0.3em] mb-10">Explore Hub</h5>
-            <ul className="space-y-5">
-              <li>
-                <Link to="/dashboard" className="text-on-surface-variant hover:text-primary text-sm font-bold transition-all flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary scale-0 group-hover:scale-100 transition-transform"></span>
-                  Personal Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link to="/houses" className="text-on-surface-variant hover:text-primary text-sm font-bold transition-all flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary scale-0 group-hover:scale-100 transition-transform"></span>
-                  Curated Listings
-                </Link>
-              </li>
-              <li>
-                <Link to="/chatbot" className="text-on-surface-variant hover:text-primary text-sm font-bold transition-all flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary scale-0 group-hover:scale-100 transition-transform"></span>
-                  AI Concierge
-                </Link>
-              </li>
+          <div className="text-left">
+            <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-10">Portfolio</h5>
+            <ul className="space-y-6 text-left">
+              <li><Link className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" to="/landlord">Luxury Dashboard</Link></li>
+              <li><Link className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" to="/houses">Private Listings</Link></li>
+              <li><Link className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" to="/insights">Investment Gallery</Link></li>
             </ul>
           </div>
-
-          {/* Resources */}
-          <div>
-            <h5 className="font-black text-primary text-xs uppercase tracking-[0.3em] mb-10">Verification Hub</h5>
-            <ul className="space-y-5">
-              <li className="text-on-surface-variant text-sm font-bold flex items-center gap-3">
-                <span className="material-symbols-outlined text-secondary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                KRA Compliance
-              </li>
-              <li className="text-on-surface-variant text-sm font-bold flex items-center gap-3">
-                <span className="material-symbols-outlined text-secondary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>gshield</span>
-                GavaConnect Verified
-              </li>
-              <li className="text-on-surface-variant text-sm font-bold flex items-center gap-3">
-                <span className="material-symbols-outlined text-secondary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
-                Safaricom Secured
-              </li>
+          <div className="text-left">
+            <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-10">Intelligence</h5>
+            <ul className="space-y-6 text-left">
+              <li><Link className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" to="/messages">Concierge Support</Link></li>
+              <li><Link className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" to="/terms">Market Legalities</Link></li>
+              <li><Link className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" to="/privacy">Ethical Protocols</Link></li>
             </ul>
           </div>
-
-          {/* Intelligent Insights */}
-          <div>
-            <h5 className="font-black text-primary text-xs uppercase tracking-[0.3em] mb-10">Curated Insights</h5>
-            <p className="text-on-surface-variant text-sm mb-6 font-medium opacity-70">Stay updated with our curated market intelligence.</p>
-            <div className="relative group">
-              <input 
-                className="w-full bg-white border-2 border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold focus:ring-4 focus:ring-primary/5 transition-all outline-none pr-16" 
-                placeholder="Email Address" 
-                type="email"
-              />
-              <button className="absolute right-2 top-2 bottom-2 aspect-square bg-primary text-white rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all border-none">
-                <span className="material-symbols-outlined text-lg">arrow_forward</span>
+          <div className="text-left">
+            <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-10">The Insight</h5>
+            <p className="text-sm text-on-surface-variant font-light mb-8 leading-relaxed">Exclusive monthly analysis on Kenyan real estate appreciation.</p>
+            <div className="flex p-1 bg-slate-50 rounded-full focus-within:ring-2 focus-within:ring-primary/20 transition-all text-left">
+              <input className="bg-transparent border-none rounded-full px-6 py-2 w-full text-xs font-medium focus:ring-0 outline-none" placeholder="Email Address" type="email"/>
+              <button className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shrink-0 hover:bg-primary-container transition-all border-none">
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </button>
             </div>
           </div>
         </div>
-
-        {/* Legal Strip */}
-        <div className="pt-12 border-t border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] text-center md:text-left">
-            © 2024 Modern Estate Curator. All Rights Reserved. GavaConnect Protocol Enabled.
-          </p>
-          <div className="flex gap-10">
-            <a href="#" className="text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-[0.3em] transition-colors">Privacy</a>
-            <a href="#" className="text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-[0.3em] transition-colors">Terms</a>
-            <a href="#" className="text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-[0.3em] transition-colors">Compliance</a>
+        <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex flex-col md:flex-row justify-between items-center gap-8 pt-12 border-t border-slate-50">
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">© 2024 SAVANNA HORIZON ASSET MANAGEMENT. ALL RIGHTS RESERVED.</p>
+          <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <Link className="hover:text-primary transition-colors" to="/privacy">Privacy</Link>
+            <Link className="hover:text-primary transition-colors" to="/terms">Terms</Link>
+            <a className="hover:text-primary transition-colors cursor-pointer">Cookies</a>
           </div>
         </div>
-      </div>
-    </footer>
+      </footer>
   );
 }

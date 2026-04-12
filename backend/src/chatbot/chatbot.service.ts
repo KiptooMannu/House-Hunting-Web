@@ -8,26 +8,44 @@ export const createSession = async (data: any) => {
   return newSession;
 };
 
-// INTELLIGENT DISCOVERY: New logic to actually answer about houses
+// INTELLIGENT DISCOVERY: Enhanced logic to return curated property cards
 export const getChatResponse = async (query: string) => {
   const normalizedQuery = query.toLowerCase();
   
-  // Search for houses matching keywords in query
+  // Search for houses matching keywords
   const matches = await db.query.houses.findMany({
     where: or(
       like(houses.title, `%${normalizedQuery}%`),
       like(houses.description, `%${normalizedQuery}%`),
       like(houses.addressLine, `%${normalizedQuery}%`)
     ),
-    limit: 3
+    limit: 5,
+    with: {
+      location: true,
+      images: {
+        limit: 1
+      }
+    }
   });
 
   if (matches.length > 0) {
-    const list = matches.map(h => `- ${h.title} (KSh ${h.monthlyRent})`).join('\n');
-    return `I've found some premium options that match your request:\n\n${list}\n\nWould you like to view the details or initiate a viewing?`;
+    const list = matches.map(h => h.title).join(', ');
+    return {
+      reply: `I have isolated several high-authority nodes that align with your criteria, including ${list}. I have populated your Discovery Canvas with the specifics.`,
+      houses: matches.map(h => ({
+        id: h.houseId,
+        title: h.title,
+        rent: h.monthlyRent,
+        county: h.location?.town || 'Nairobi',
+        images: h.images?.map(img => img.imageUrl) || []
+      }))
+    };
   }
 
-  return "I couldn't find an exact match for that specific preference, but I have several upcoming listings in Westlands and Karen. What specific features are you looking for?";
+  return {
+    reply: "My intelligence nodes couldn't isolate an exact match for that specific preference, but I have several upcoming institutional listings in Westlands and Karen. What specific ROI or lifestyle features should I prioritize?",
+    houses: []
+  };
 };
 
 export const getSession = async (sessionId: number) => {

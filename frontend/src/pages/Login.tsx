@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useLoginMutation } from '../store/apiSlice';
 import { setCredentials } from '../store/authSlice';
@@ -9,6 +9,12 @@ import { Badge } from '@/components/ui/badge';
 
 export default function Login() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  
+  const sessionExpired = searchParams.get('message') === 'session_expired';
+  const from = (location.state as any)?.from;
   const showLandlordMsg = searchParams.get('message') === 'landlord_required';
   
   const [email, setEmail] = useState('');
@@ -16,8 +22,6 @@ export default function Login() {
   const [error, setError] = useState('');
   
   const [login, { isLoading: loading }] = useLoginMutation();
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,11 +32,16 @@ export default function Login() {
       const { user, accessToken } = res;
       dispatch(setCredentials({ user, token: accessToken }));
       
+      if (from) {
+        navigate(from, { replace: true });
+        return;
+      }
+
       const role = user.role;
       console.log('🏁 Navigating to role-based dashboard:', role);
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'landlord') navigate('/landlord');
-      else navigate('/houses');
+      if (role === 'admin') navigate('/admin', { replace: true });
+      else if (role === 'landlord') navigate('/landlord', { replace: true });
+      else navigate('/houses', { replace: true });
     } catch (err: any) {
       console.error('❌ Auth error in frontend:', err);
       setError(err?.data?.error || err?.data?.message || 'Login failed. Please check your credentials.');
@@ -74,15 +83,22 @@ export default function Login() {
             </div>
           )}
 
-          <div className="mb-10">
+          <div className="mb-10 text-left">
             <h1 className="text-3xl font-black font-headline text-primary tracking-tight mb-2">Welcome Back</h1>
             <p className="text-slate-400 font-medium">Enter your credentials to access your estate hub.</p>
           </div>
 
+          {sessionExpired && (
+            <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2 text-left">
+              <span className="material-symbols-outlined text-primary">lock_clock</span>
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Protocol Lock Active: Session secured due to inactivity.</p>
+            </div>
+          )}
+
           {error && <Badge variant="destructive" className="mb-6 p-4 w-full rounded-xl">{error}</Badge>}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-6 text-left">
+            <div className="space-y-2 text-left">
               <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 ml-1">Email Address</label>
               <Input 
                 type="email" 
@@ -93,7 +109,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 text-left">
               <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 ml-1">Password</label>
               <Input 
                 type="password" 
