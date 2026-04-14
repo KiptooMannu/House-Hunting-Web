@@ -18,7 +18,8 @@ import MarketInsights from './pages/admin-landlord/MarketInsights';
 import LandlordOnboarding from './pages/admin-landlord/LandlordOnboarding';
 import TermsPrivacy from './pages/TermsPrivacy';
 import Messages from './pages/admin-landlord/Messages';
-import BookedSuccess from './pages/BookedSuccess';
+import PaymentStatus from './pages/PaymentStatus';
+
 
 import LandlordDashboard from './pages/admin-landlord/LandlordDashboard';
 import CreateListing from './pages/admin-landlord/CreateListing';
@@ -44,6 +45,9 @@ export default function App() {
           <Route path="/terms" element={<TermsPrivacy />} />
           <Route path="/privacy" element={<TermsPrivacy />} />
 
+          {/* ✅ Payment status page (polling for M-Pesa & card) */}
+          <Route path="/payment_status" element={<PaymentStatus />} />
+
           <Route
             path="/user/*"
             element={
@@ -63,7 +67,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/booked-success" element={<BookedSuccess />} />
+          {/* Keep for backward compatibility; can be removed after full migration */}
+
+
           {/* Consolidated Admin/Landlord Routes */}
           <Route
             path="/admin"
@@ -78,12 +84,12 @@ export default function App() {
             }
           />
           <Route
-             path="/messages"
-             element={
-               <ProtectedRoute allowedRoles={['landlord', 'admin']}>
-                 <Messages />
-               </ProtectedRoute>
-             }
+            path="/messages"
+            element={
+              <ProtectedRoute allowedRoles={['landlord', 'admin']}>
+                <Messages />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/landlord/create-listing"
@@ -104,4 +110,3 @@ export default function App() {
     </div>
   );
 }
-

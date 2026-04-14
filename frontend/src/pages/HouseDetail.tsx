@@ -30,7 +30,7 @@ export default function HouseDetail() {
   const { data: houseData, isLoading: loading, error: fetchError } = useGetHouseByIdQuery(houseId, { skip: !houseId });
   const { user } = useSelector((state: RootState) => state.auth);
   
-  const [updateHouse] = useUpdateHouseMutation();
+  const [_updateHouse] = useUpdateHouseMutation();
   const [deleteHouse, { isLoading: isDeleting }] = useDeleteHouseMutation();
 
   const isOwner = useMemo(() => {

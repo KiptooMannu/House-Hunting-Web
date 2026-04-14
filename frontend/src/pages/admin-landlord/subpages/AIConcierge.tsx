@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../../../api/axios';
 
 export default function AIConcierge() {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<{ role: string; text: string; time: string; isThinking?: boolean }[]>([
     { 
       role: 'bot', 
       text: `Greetings, curated investor. I have analyzed your portfolio performance against the current Savanna Ridge development. Your current liquidity is optimally positioned for a high-authority acquisition. Shall we review my top three refined selections?`,

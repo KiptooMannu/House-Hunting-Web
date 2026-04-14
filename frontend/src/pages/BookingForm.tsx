@@ -1,47 +1,169 @@
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store';
-import { useGetHouseByIdQuery, useCreateBookingMutation } from '../store/apiSlice';
+import { useGetHouseByIdQuery } from '../store/apiSlice';
 import { formatCurrency } from '../utils/helpers';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Safely load Stripe – show error if key missing
+const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+if (!stripePublicKey) {
+  console.error('Stripe public key is missing! Set VITE_STRIPE_PUBLIC_KEY in .env');
+}
+const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
+
+// Inner component for card payment form
+const CardPaymentForm = ({ bookingId, clientSecret, onSuccess, onError }: any) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setProcessing(true);
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: { card: elements.getElement(CardElement)! },
+    });
+    if (error) {
+      onError(error.message);
+    } else if (paymentIntent?.status === 'succeeded') {
+      const res = await fetch('/api/payments/card/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ paymentIntentId: paymentIntent.id, bookingId }),
+      });
+      const data = await res.json();
+      if (data.success) onSuccess();
+      else onError(data.error);
+    }
+    setProcessing(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 border rounded-xl bg-white">
+        <CardElement />
+      </div>
+      <button type="submit" disabled={!stripe || processing} className="w-full bg-primary text-white py-3 rounded-full font-bold">
+        {processing ? 'Processing...' : 'Pay with Card'}
+      </button>
+    </form>
+  );
+};
 
 export default function BookingForm() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
-  
+
   const houseId = parseInt(id!);
   const { data: house, isLoading } = useGetHouseByIdQuery(houseId);
-  const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
 
+  // Form state
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card'>('mpesa');
   const [phone, setPhone] = useState(user?.phone || '');
   const [occupants, setOccupants] = useState('1 Person');
   const [notes, setNotes] = useState('');
   const [moveInDate, setMoveInDate] = useState(location.state?.startDate || '');
+  const [loading, setLoading] = useState(false);
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const [stripeBookingId, setStripeBookingId] = useState<number | null>(null);
 
   if (isLoading) return <LoadingSpinner />;
   if (!house) return <div>Property not found</div>;
 
-  const handleBooking = async () => {
+  // M-Pesa payment initiation
+  const handleMpesaPay = async () => {
+    if (!phone) {
+      alert('Please enter your M-Pesa phone number');
+      return;
+    }
+    setLoading(true);
     try {
-      await createBooking({
-        houseId,
-        userId: user?.userId,
-        status: 'pending'
-      }).unwrap();
-      navigate('/booked-success');
+      const res = await fetch('/api/payments/mpesa/stkpush', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          houseId,
+          moveInDate,
+          occupants,
+          notes,
+          phone,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('STK Push sent! Check your phone and enter PIN.');
+        navigate(`/payment_status?checkoutId=${data.checkoutRequestId}`); // ✅ changed to underscore
+      } else {
+        alert('Payment initiation failed: ' + data.error);
+      }
     } catch (err) {
       console.error(err);
+      alert('Network error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Card payment: create Stripe PaymentIntent
+  const handleCardPay = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/payments/card/create-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          houseId,
+          moveInDate,
+          occupants,
+          notes,
+          amount: 2500,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStripeClientSecret(data.clientSecret);
+        setStripeBookingId(data.bookingId);
+      } else {
+        alert('Failed to initialize card payment: ' + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const onCardSuccess = (bookingId: number, transactionId: string) => {
+    navigate(`/payment_status?bookingId=${bookingId}&txn=${transactionId}`);
+  };
+  const onCardError = (msg: string) => {
+    alert('Payment failed: ' + msg);
+    setStripeClientSecret(null);
+  };
+
+  // Don't render Stripe if key is missing
+  const showStripe = stripePublicKey && stripePromise;
 
   return (
     <div className="bg-surface text-on-surface selection:bg-primary-fixed min-h-screen">
       {/* Editorial Header */}
       <header className="pt-32 pb-8 px-8 md:px-16 max-w-6xl mx-auto text-left">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-primary mb-4 hover:opacity-70 transition-opacity"
         >
@@ -52,14 +174,13 @@ export default function BookingForm() {
           Secure Your <span className="text-primary-container bg-primary-fixed px-2">New Horizon.</span>
         </h1>
         <p className="text-on-surface-variant max-w-xl text-lg leading-relaxed">
-          Complete your reservation for <span className="font-semibold text-on-surface">{house.title}</span>. This action initiates the verified booking process via GavaConnect.
+          Complete your reservation for <span className="font-semibold text-on-surface">{house.title}</span>.
         </p>
       </header>
 
       <section className="px-8 md:px-16 pb-24 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
-        {/* Left Column: The Form Journey */}
         <div className="lg:col-span-7 space-y-12">
-          {/* Section 1: Booking Details */}
+          {/* Booking Details (unchanged) */}
           <div className="space-y-8">
             <div className="flex items-center gap-4">
               <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">01</span>
@@ -68,16 +189,16 @@ export default function BookingForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant px-1">Preferred Move-in Date</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={moveInDate}
                   onChange={(e) => setMoveInDate(e.target.value)}
-                  className="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all font-medium text-on-surface" 
+                  className="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all font-medium text-on-surface"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant px-1">Number of Occupants</label>
-                <select 
+                <select
                   value={occupants}
                   onChange={(e) => setOccupants(e.target.value)}
                   className="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all font-medium text-on-surface appearance-none"
@@ -91,17 +212,17 @@ export default function BookingForm() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant px-1">Special Requests / Notes</label>
-              <textarea 
+              <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all font-medium text-on-surface placeholder:opacity-40" 
-                placeholder="Mention any specific requirements or questions for the property manager..." 
+                className="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all font-medium text-on-surface placeholder:opacity-40"
+                placeholder="Mention any specific requirements or questions for the property manager..."
                 rows={4}
               />
             </div>
           </div>
 
-          {/* Section 2: Payment Verification */}
+          {/* Payment Section */}
           <div className="space-y-8 pt-4">
             <div className="flex items-center gap-4">
               <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">02</span>
@@ -118,34 +239,76 @@ export default function BookingForm() {
                 <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
               </div>
             </div>
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant px-1">M-Pesa Phone Number</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                    <span className="text-on-surface-variant font-bold text-sm">+254</span>
-                  </div>
-                  <input 
-                    type="tel" 
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-surface-container-high border-none rounded-xl py-4 pl-16 pr-4 focus:ring-2 focus:ring-primary transition-all font-bold text-on-surface tracking-widest" 
-                    placeholder="712 345 678" 
-                  />
-                </div>
-              </div>
-              <button 
-                onClick={handleBooking}
-                disabled={isBooking}
-                className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-bold text-lg shadow-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 disabled:opacity-50"
+
+            {/* Payment method selection */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => setPaymentMethod('mpesa')}
+                className={`flex-1 py-3 rounded-xl font-bold ${paymentMethod === 'mpesa' ? 'bg-primary text-white' : 'bg-surface-container-high'}`}
               >
-                {isBooking ? 'Processing...' : 'Pay via M-Pesa'}
-                <span className="material-symbols-outlined">payments</span>
+                M-Pesa
+              </button>
+              <button
+                onClick={() => setPaymentMethod('card')}
+                className={`flex-1 py-3 rounded-xl font-bold ${paymentMethod === 'card' ? 'bg-primary text-white' : 'bg-surface-container-high'}`}
+                disabled={!showStripe}
+              >
+                Card (Visa/Mastercard) {!showStripe && '(Key missing)'}
               </button>
             </div>
+
+            {/* M-Pesa form */}
+            {paymentMethod === 'mpesa' && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant px-1">M-Pesa Phone Number</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                      <span className="text-on-surface-variant font-bold text-sm">+254</span>
+                    </div>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-surface-container-high border-none rounded-xl py-4 pl-16 pr-4 focus:ring-2 focus:ring-primary transition-all font-bold text-on-surface tracking-widest"
+                      placeholder="712 345 678"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleMpesaPay}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-bold text-lg shadow-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {loading ? 'Processing...' : 'Pay via M-Pesa'}
+                  <span className="material-symbols-outlined">payments</span>
+                </button>
+              </div>
+            )}
+
+            {/* Card payment form */}
+            {paymentMethod === 'card' && !stripeClientSecret && (
+              <button
+                onClick={handleCardPay}
+                disabled={loading || !showStripe}
+                className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-bold text-lg shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-50"
+              >
+                {loading ? 'Initializing...' : 'Pay with Card'}
+              </button>
+            )}
+            {paymentMethod === 'card' && stripeClientSecret && showStripe && (
+              <Elements stripe={stripePromise}>
+                <CardPaymentForm
+                  bookingId={stripeBookingId!}
+                  clientSecret={stripeClientSecret}
+                  onSuccess={onCardSuccess}
+                  onError={onCardError}
+                />
+              </Elements>
+            )}
           </div>
 
-          {/* Trust Section */}
+          {/* Trust Section (unchanged) */}
           <div className="pt-8 border-t border-surface-variant flex flex-col md:flex-row gap-6 items-center">
             <div className="flex -space-x-2">
               <img className="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80" alt="Trust" />
@@ -153,7 +316,7 @@ export default function BookingForm() {
               <div className="w-10 h-10 rounded-full bg-surface-container-highest border-2 border-white flex items-center justify-center text-[10px] font-bold text-on-surface-variant">2k+</div>
             </div>
             <div className="text-xs text-on-surface-variant font-medium leading-tight text-center md:text-left">
-              Joined 2,400+ Kenyans who secured their homes this month.<br/>
+              Joined 2,400+ Kenyans who secured their homes this month.<br />
               <span className="flex items-center justify-center md:justify-start gap-1 mt-1 text-secondary">
                 <span className="material-symbols-outlined text-[14px]">shield</span> GavaConnect Protected & Encrypted
               </span>
@@ -161,10 +324,9 @@ export default function BookingForm() {
           </div>
         </div>
 
-        {/* Right Column: Context Sidebar */}
+        {/* Right Column: Context Sidebar (unchanged) */}
         <div className="lg:col-span-5">
           <div className="sticky top-24 space-y-6">
-            {/* Property Summary Card */}
             <div className="bg-white rounded-[2rem] overflow-hidden shadow-2xl shadow-on-surface/5 border border-slate-100">
               <div className="relative h-64">
                 <img className="w-full h-full object-cover" src={house.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c"} alt={house.title} />
@@ -209,7 +371,6 @@ export default function BookingForm() {
                 </div>
               </div>
             </div>
-            {/* Security Badge */}
             <div className="bg-surface-container-low p-6 rounded-[2rem] flex items-center gap-5">
               <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
                 <span className="material-symbols-outlined text-primary text-3xl">security</span>

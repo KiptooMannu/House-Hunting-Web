@@ -29,7 +29,8 @@ export const listBookings = async (c: Context) => {
   try {
     const seekerId = c.req.query('seekerId') ? parseInt(c.req.query('seekerId')!) : undefined;
     const houseId = c.req.query('houseId') ? parseInt(c.req.query('houseId')!) : undefined;
-    const bookings = await bookingService.listBookings({ seekerId, houseId });
+    const landlordId = c.req.query('landlordId') ? parseInt(c.req.query('landlordId')!) : undefined;
+    const bookings = await bookingService.listBookings({ seekerId, houseId, landlordId });
     return c.json(bookings, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

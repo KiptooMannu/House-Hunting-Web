@@ -6,7 +6,8 @@ import type { RootState } from '../../store';
 import { 
   useGetRevenueQuery, 
   useGetHousesQuery, 
-  useGetProfileQuery
+  useGetProfileQuery,
+  useGetBookingsQuery
 } from '../../store/apiSlice';
 import { formatCurrency, getHouseImage } from '../../utils/helpers';
 import IntelligenceHub from './subpages/IntelligenceHub';
@@ -36,17 +37,24 @@ export default function LandlordDashboard() {
     landlordId: user?.role === 'landlord' ? user.userId : undefined 
   });
   const { data: housesData, isLoading: housesLoading } = useGetHousesQuery({ page: 1, limit: 100 });
+  const { data: bookingsData, isLoading: bookingsLoading } = useGetBookingsQuery({ 
+    landlordId: user?.role === 'landlord' ? user.userId : undefined 
+  });
   const { data: profileData } = useGetProfileQuery({});
   
   const revenue = revenueData?.data ?? null;
   const listings = housesData?.items ?? [];
-  const summary = revenue?.summary || { total_revenue: 2840500, total_payments: 42, average_payment: 0 };
+  const bookings = bookingsData ?? [];
+  const summary = revenue?.summary || { total_revenue: 0, total_payments: 0, average_payment: 0 };
   
-  const displayListings = useMemo(() => {
+  const { ownedListings, marketListings } = useMemo(() => {
     if (user?.role === 'landlord') {
-        return listings.filter((l: any) => l.landlordId === user.userId);
+        return {
+            ownedListings: listings.filter((l: any) => l.landlordId === user.userId),
+            marketListings: listings.filter((l: any) => l.landlordId !== user.userId)
+        };
     }
-    return listings;
+    return { ownedListings: listings, marketListings: [] };
   }, [listings, user]);
 
   const handleLogout = () => {
@@ -55,354 +63,472 @@ export default function LandlordDashboard() {
   };
 
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: 'dashboard' },
+    { id: 'overview', label: 'Overview', icon: 'grid_view' },
     { id: 'bookings', label: 'Active Bookings', icon: 'calendar_today' },
     { id: 'properties', label: 'My Listings', icon: 'domain' },
-    { id: 'revenue', label: 'Financials (M-Pesa)', icon: 'payments' },
+    { id: 'revenue', label: 'Financials (M-Pesa)', icon: 'account_balance_wallet' },
     { id: 'compliance', label: 'Compliance (GavaConnect)', icon: 'verified_user' },
+    { id: 'intelligence', label: 'Intelligence Hub', icon: 'insights' },
   ];
 
-  if (revenueLoading || housesLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-left">
+  if (revenueLoading || housesLoading || bookingsLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-surface text-left">
       <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
-  return (
-    <div className="bg-background text-on-surface min-h-screen flex text-left font-body">
-      {/* SideNavBar */}
-      <aside className="h-screen w-72 left-0 top-0 fixed bg-[#f2f4f5] flex flex-col py-6 z-40 hidden md:flex border-r border-slate-200/50">
-        <div className="px-8 mb-10">
-          <h1 className="text-lg font-black text-[#003461] tracking-tight font-headline">Savanna Horizon</h1>
-          <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Landlord Console</p>
-        </div>
-        <nav className="flex-1 space-y-1">
-          {navItems.map(item => (
-            <button 
-              key={item.id}
-              onClick={() => navigate(`/landlord/${item.id}`)}
-              className={`flex items-center gap-3 px-6 py-3 w-full transition-all duration-300 ease-in-out text-left ${
-                activeTab === item.id 
-                  ? 'bg-white text-[#004B87] font-bold rounded-lg ml-2 shadow-sm scale-95' 
-                  : 'text-[#424750] hover:text-[#004B87] hover:translate-x-1'
-              }`}
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="font-headline text-sm">{item.label}</span>
-            </button>
-          ))}
-          <button 
-              onClick={() => navigate('/landlord/intelligence')}
-              className={`flex items-center gap-3 px-6 py-3 w-full transition-all duration-300 text-left ${
-                activeTab === 'intelligence' 
-                  ? 'bg-white text-[#004B87] font-bold rounded-lg ml-2 shadow-sm scale-95' 
-                  : 'text-[#424750] hover:text-[#004B87]'
-              }`}
-            >
-              <span className="material-symbols-outlined">monitoring</span>
-              <span className="font-headline text-sm">Intelligence Hub</span>
-            </button>
-        </nav>
-        <div className="px-6 mt-auto">
-          <div className="bg-primary-container p-5 rounded-2xl mb-8">
-            <p className="text-on-primary-container text-xs font-bold mb-2">Portfolio Analytics</p>
-            <p className="text-white text-[10px] leading-relaxed opacity-80 mb-4 font-medium italic">Gain deeper insights with premium market data integration.</p>
-            <button className="w-full py-2 bg-white text-primary text-xs font-bold rounded-full hover:bg-surface-bright transition-colors">Upgrade Plan</button>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700">
+            {/* Financial Pulse Summary Bento */}
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all group overflow-hidden relative">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-primary/5 rounded-lg text-primary">
+                    <span className="material-symbols-outlined">payments</span>
+                  </div>
+                  <span className="text-xs font-bold text-secondary bg-secondary-container/30 px-2 py-1 rounded-full">+12.5%</span>
+                </div>
+                <p className="text-on-surface-variant font-label text-sm uppercase tracking-wider mb-1">Portfolio Revenue</p>
+                <h3 className="text-3xl font-headline font-extrabold text-primary">{formatCurrency(summary.total_revenue)}</h3>
+                <p className="text-xs text-on-surface-variant mt-4 font-medium italic">Net after platform fees</p>
+              </div>
+
+              <div className="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all group overflow-hidden relative">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-tertiary/5 rounded-lg text-tertiary">
+                    <span className="material-symbols-outlined">schedule</span>
+                  </div>
+                  <span className="text-xs font-bold text-tertiary bg-tertiary-fixed/30 px-2 py-1 rounded-full">{summary.total_payments} Payouts</span>
+                </div>
+                <p className="text-on-surface-variant font-label text-sm uppercase tracking-wider mb-1">Expected Yield</p>
+                <h3 className="text-3xl font-headline font-extrabold text-tertiary">{formatCurrency(summary.total_revenue / 4)}</h3>
+                <p className="text-xs text-on-surface-variant mt-4 font-medium">Monthly projection active</p>
+              </div>
+
+              <div className="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all group overflow-hidden relative">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-secondary/5 rounded-lg text-secondary">
+                    <span className="material-symbols-outlined">verified_user</span>
+                  </div>
+                  <span className="text-xs font-bold text-secondary bg-secondary-container/30 px-2 py-1 rounded-full">GavaReady</span>
+                </div>
+                <p className="text-on-surface-variant font-label text-sm uppercase tracking-wider mb-1">Reserved Compliance</p>
+                <h3 className="text-3xl font-headline font-extrabold text-on-secondary-container">{formatCurrency(summary.total_revenue * 0.15)}</h3>
+                <p className="text-xs text-on-surface-variant mt-4 font-medium italic">Protocol automated</p>
+              </div>
+            </section>
+
+            {/* Managed Bookings Intelligence */}
+            <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-slate-100 mb-10">
+                <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+                    <h3 className="text-lg font-headline font-bold text-on-surface">Active Managed Node Bookings</h3>
+                    <button className="text-xs font-bold text-primary hover:underline" onClick={() => navigate('/landlord/bookings')}>View All Clusters</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-surface-container-low border-b border-outline-variant/10">
+                      <tr>
+                        <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Property Node</th>
+                        <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Tenant ID</th>
+                        <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Status</th>
+                        <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline text-right">Yield (KES)</th>
+                        <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Timeline</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container">
+                      {bookings.length > 0 ? (
+                        bookings.slice(0, 5).map((booking: any, i: number) => (
+                          <tr key={i} className="hover:bg-surface-container-low/50 transition-colors group">
+                            <td className="px-6 py-5">
+                              <p className="text-sm font-bold text-on-surface">{booking.house?.title || `Node_${booking.houseId}`}</p>
+                              <p className="text-xs text-on-surface-variant truncate max-w-[200px]">{booking.house?.location?.town || 'Port Cluster'}</p>
+                            </td>
+                            <td className="px-6 py-5">
+                              <span className="text-sm font-medium">Seeker_{booking.seekerId}</span>
+                            </td>
+                             <td className="px-6 py-5">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                booking.status === 'confirmed' ? 'bg-secondary-container/20 text-secondary' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}>
+                                {booking.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-5 text-sm font-bold text-primary text-right">{formatCurrency(booking.totalPrice)}</td>
+                            <td className="px-6 py-5 text-xs text-on-surface-variant">{new Date(booking.createdAt).toLocaleDateString()}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                            <td colSpan={5} className="px-6 py-10 text-center text-on-surface-variant font-medium">No active node bookings detected.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
           </div>
-          <div className="space-y-1">
-            <button onClick={() => navigate('/landlord/settings')} className="w-full flex items-center gap-3 px-4 py-2 text-[#424750] hover:text-[#004B87] transition-all">
-              <span className="material-symbols-outlined">settings</span>
-              <span className="font-headline text-sm">Settings</span>
-            </button>
-            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-error hover:opacity-80 transition-all font-bold">
-              <span className="material-symbols-outlined font-variation-fill">logout</span>
-              <span className="font-headline text-sm">Logout</span>
-            </button>
+        );
+      case 'properties':
+        return (
+          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-5 duration-700">
+            {/* My Managed Nodes */}
+            <section>
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <h2 className="text-2xl font-headline font-bold text-primary mb-1">My Managed Assets</h2>
+                  <p className="text-on-surface-variant text-sm font-medium">Exclusive assets under your direct operational authority.</p>
+                </div>
+                <button 
+                  onClick={() => navigate('/landlord/create-listing')}
+                  className="px-6 py-3 bg-primary text-white font-bold rounded-full text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  Deploy Property Node
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {ownedListings.map((l: any) => (
+                  <div key={l.houseId} className="bg-surface-container-lowest rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 transition-all hover:-translate-y-2 group group">
+                    <div className="aspect-[16/10] relative overflow-hidden">
+                      <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src={getHouseImage(l.images?.[0])} alt={l.title} />
+                      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-bold text-primary uppercase tracking-widest shadow-sm">
+                        Managed Alpha
+                      </div>
+                      {/* Action Layer */}
+                      <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <button 
+                          onClick={() => navigate('/landlord/create-listing', { state: { edit: true, house: l } })}
+                          className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-xl" 
+                          title="Edit Node"
+                        >
+                          <span className="material-symbols-outlined text-xl">edit</span>
+                        </button>
+                        <button className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-xl" title="Delete Node">
+                          <span className="material-symbols-outlined text-xl">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-8">
+                      <h4 className="text-xl font-headline font-extrabold text-on-surface mb-2">{l.title}</h4>
+                      <p className="text-on-surface-variant text-xs mb-6 font-medium leading-relaxed">{l.location?.town || 'Nairobi Central'} • {l.houseType}</p>
+                      <div className="flex justify-between items-center pt-6 border-t border-outline-variant/10">
+                        <span className="text-lg font-extrabold text-primary font-headline">{formatCurrency(l.monthlyRent)}</span>
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/20 text-secondary text-[10px] font-bold uppercase tracking-wider">Active Yield</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Global Market Inventory */}
+            <section className="pt-12 border-t border-outline-variant/10">
+               <div className="mb-8">
+                  <h2 className="text-2xl font-headline font-bold text-outline mb-1">Market Liquidity Overviews</h2>
+                  <p className="text-on-surface-variant text-sm font-medium italic text-left">Read-only snapshots of the broader ecosystem.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                   {marketListings.slice(0, 8).map((l: any) => (
+                      <div key={l.houseId} className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/5 hover:border-outline-variant/30 transition-all cursor-default text-left">
+                         <div className="aspect-square rounded-xl overflow-hidden mb-4 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all">
+                            <img className="w-full h-full object-cover" src={getHouseImage(l.images?.[0])} alt={l.title} />
+                         </div>
+                         <h5 className="text-sm font-bold text-on-surface truncate font-headline">{l.title}</h5>
+                         <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1 opacity-60">{l.location?.town || 'Nairobi'}</p>
+                         <div className="mt-4 flex justify-between items-center">
+                            <span className="text-xs font-bold text-primary">{formatCurrency(l.monthlyRent)}</span>
+                            <span className="text-[9px] font-black text-outline uppercase tracking-widest">Public Domain</span>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+            </section>
+          </div>
+        );
+      case 'bookings':
+        return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
+            {/* Summary Cards */}
+            <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2.5 bg-primary/5 rounded-lg text-primary">
+                    <span className="material-symbols-outlined text-xl">calendar_today</span>
+                  </div>
+                </div>
+                <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-1">Total Bookings</p>
+                <h3 className="text-3xl font-headline font-extrabold text-primary">{bookings.length}</h3>
+              </div>
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2.5 bg-secondary/5 rounded-lg text-secondary">
+                    <span className="material-symbols-outlined text-xl">check_circle</span>
+                  </div>
+                </div>
+                <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-1">Confirmed</p>
+                <h3 className="text-3xl font-headline font-extrabold text-secondary">{bookings.filter((b: any) => b.status === 'confirmed').length}</h3>
+              </div>
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2.5 bg-tertiary/5 rounded-lg text-tertiary">
+                    <span className="material-symbols-outlined text-xl">hourglass_top</span>
+                  </div>
+                </div>
+                <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-1">Pending Payment</p>
+                <h3 className="text-3xl font-headline font-extrabold text-tertiary">{bookings.filter((b: any) => b.status === 'pending_payment').length}</h3>
+              </div>
+              <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-outline-variant/20 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2.5 bg-primary/5 rounded-lg text-primary">
+                    <span className="material-symbols-outlined text-xl">payments</span>
+                  </div>
+                </div>
+                <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-1">Total Revenue</p>
+                <h3 className="text-3xl font-headline font-extrabold text-primary">{formatCurrency(bookings.reduce((acc: number, b: any) => acc + Number(b.totalPrice || 0), 0))}</h3>
+              </div>
+            </section>
+
+            {/* Bookings Table */}
+            <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+              <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-headline font-bold text-on-surface">Bookings on Your Listings</h3>
+                  <p className="text-xs text-on-surface-variant mt-1">All bookings made by seekers on properties you manage</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-surface-container-low border-b border-outline-variant/10">
+                    <tr>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Property</th>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Tenant</th>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Status</th>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Move-in</th>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline text-right">Amount (KES)</th>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Booking Fee</th>
+                      <th className="px-6 py-5 text-xs font-bold text-on-surface-variant uppercase tracking-widest font-headline">Booked On</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container">
+                    {bookings.length > 0 ? (
+                      bookings.map((booking: any, i: number) => (
+                        <tr key={booking.bookingId || i} className="hover:bg-surface-container-low/50 transition-colors">
+                          <td className="px-6 py-5">
+                            <p className="text-sm font-bold text-on-surface">{booking.house?.title || `Property #${booking.houseId}`}</p>
+                            <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">{booking.house?.location?.town || '—'} • {booking.house?.houseType || '—'}</p>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="text-sm font-medium text-on-surface">Seeker #{booking.seekerId}</span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              booking.status === 'confirmed' 
+                                ? 'bg-secondary-container/20 text-secondary' 
+                                : booking.status === 'pending_payment' 
+                                ? 'bg-tertiary-fixed/20 text-tertiary'
+                                : booking.status === 'cancelled'
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-surface-container-high text-on-surface-variant'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                booking.status === 'confirmed' ? 'bg-secondary' 
+                                : booking.status === 'pending_payment' ? 'bg-tertiary' 
+                                : booking.status === 'cancelled' ? 'bg-red-500'
+                                : 'bg-outline'
+                              }`}></span>
+                              {booking.status?.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-xs text-on-surface-variant font-medium">
+                            {booking.moveInDate ? new Date(booking.moveInDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                          </td>
+                          <td className="px-6 py-5 text-sm font-bold text-primary text-right">{formatCurrency(booking.totalPrice)}</td>
+                          <td className="px-6 py-5 text-xs font-medium text-on-surface-variant">{formatCurrency(booking.bookingFee)}</td>
+                          <td className="px-6 py-5 text-xs text-on-surface-variant">
+                            {new Date(booking.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <span className="material-symbols-outlined text-4xl text-slate-200">event_busy</span>
+                            <p className="text-on-surface-variant font-medium">No bookings found for your listings yet.</p>
+                            <p className="text-xs text-on-surface-variant/60">When seekers book your properties, they'll appear here.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      case 'revenue':
+        return <MpesaLedger payments={revenue?.items || []} summary={summary} />;
+      case 'intelligence':
+        return <IntelligenceHub />;
+      case 'concierge':
+        return <AIConcierge />;
+      default:
+        return (
+          <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-6">
+               <span className="material-symbols-outlined text-4xl">construction</span>
+            </div>
+            <h2 className="text-2xl font-black text-primary font-headline tracking-tighter mb-2 italic">Module Under Refinement</h2>
+            <p className="text-on-surface-variant text-sm max-w-sm font-medium">This intelligence node is currently being calibrated. Please check back during the next synchronization cycle.</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="bg-surface text-on-surface min-h-screen flex text-left font-body">
+      {/* SideNavBar (Authority: Design System) */}
+      <aside className="h-screen w-64 fixed left-0 top-0 bg-white flex flex-col py-6 z-40 hidden md:flex border-r border-slate-100 dark:bg-slate-950">
+        <div className="px-6 mb-10">
+          <div className="px-8 py-8">
+            <h2 className="text-[11px] font-extrabold tracking-[0.2em] text-blue-900/60 dark:text-blue-200/60 font-headline uppercase">Landlord Console</h2>
+            <div className="h-0.5 w-6 bg-primary mt-2 rounded-full"></div>
+          </div>
+        </div>
+        
+        <nav className="flex-1 space-y-1">
+          <div className="flex flex-col gap-1 px-4">
+            {navItems.map(item => (
+              <button 
+                key={item.id}
+                onClick={() => navigate(`/landlord/${item.id}`)}
+                className={`flex items-center gap-4 px-4 py-3.5 transition-all group rounded-lg relative ${
+                  activeTab === item.id 
+                    ? 'text-primary bg-primary/5 dark:bg-primary/20 font-bold' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                {activeTab === item.id && <div className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full"></div>}
+                <span className={`material-symbols-outlined text-[22px] ${activeTab === item.id ? 'text-primary' : 'group-hover:text-primary'}`} data-icon={item.icon}>{item.icon}</span>
+                <span className="font-headline text-[15px]">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        <div className="px-4 mt-auto">
+          <div className="p-4">
+            <div className="bg-primary-container rounded-2xl p-6 relative overflow-hidden shadow-lg shadow-primary/20">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+              <h4 className="text-white font-headline font-bold text-sm mb-2 relative z-10">Portfolio Analytics</h4>
+              <p className="text-white/80 text-[11px] leading-relaxed mb-6 relative z-10">Gain deeper insights with premium market data integration.</p>
+              <button className="w-full bg-white text-primary text-[11px] font-bold py-2.5 rounded-lg hover:bg-blue-50 transition-colors relative z-10">
+                Upgrade Now
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col gap-1">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-primary transition-colors w-full text-left"
+              >
+                <span className="material-symbols-outlined text-sm">logout</span>
+                <span className="text-xs font-medium font-headline">Log Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content Canvas */}
-      <main className="md:ml-72 flex-1 min-h-screen">
-        {/* TopNavBar */}
-        <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-30 shadow-sm px-8 h-16 flex justify-between items-center w-full">
-          <div className="flex items-center gap-6 flex-1">
-            <div className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-xs font-bold focus:ring-2 focus:ring-primary-container placeholder:text-outline-variant outline-none" placeholder="Search bookings, properties, or users..." type="text"/>
+      <main className="flex-1 md:ml-64 min-h-screen flex flex-col">
+        {/* TopAppBar */}
+        <header className="fixed top-0 right-0 left-0 md:left-64 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm border-b border-slate-100">
+          <div className="flex justify-between items-center px-8 py-4 max-w-full">
+            <div className="flex items-center gap-4">
+              <h2 className="text-2xl font-extrabold tracking-tight text-blue-900 dark:text-blue-50 font-headline capitalize">
+                {activeTab.replace('-', ' ')}
+              </h2>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden lg:flex items-center gap-4 mr-6">
-              <button onClick={() => navigate('/chatbot')} className="text-[#424750] font-headline font-semibold text-sm hover:text-[#004B87]">AI Support</button>
-              <button className="text-[#424750] font-headline font-semibold text-sm hover:text-[#004B87]">Help Center</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="p-2 text-on-surface-variant hover:bg-surface-container transition-colors rounded-full relative">
-                <span className="material-symbols-outlined">notifications</span>
-                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
-              </button>
-              <button onClick={() => navigate('/landlord/concierge')} className="p-2 text-on-surface-variant hover:bg-surface-container transition-colors rounded-full text-secondary">
-                <span className="material-symbols-outlined font-variation-fill">smart_toy</span>
-              </button>
-            </div>
-            <div className="h-8 w-px bg-outline-variant mx-2"></div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => navigate('/landlord/create-listing')}
-                className="bg-gradient-to-br from-primary to-primary-container text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg hover:opacity-90 transition-all border-none"
-              >
-                Create Listing
-              </button>
-              <div className="flex items-center gap-2">
-                 <img 
-                  alt="Profile" 
-                  className="w-10 h-10 rounded-full object-cover border-2 border-primary-container/20 shadow-sm" 
-                  src={profileData?.user?.avatar || user?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuC0P-pAVbDvv1_TdGe-uRum14LuZp_IfbsfWtXVFE842ewlN4vzYDHXAjsai_hc7TrDhimqtMmCOA6iZAaP5vNHAEhSpn1ifKj_zzWNb9iKhNHmd6XM_gr_kECtDM3r24jM_miDebQd2BC4FP-QfEgT1M2jiT75FxfV1evhHKRszL3glX7x4z5sLhYq-vC7Gx8RWri8bcecoCXepXiLZLAx8O519Uc99nfypmBkGZLHdvo74XhWzkjL7ITNMOvmsjLWM_G_QPir774"}
-                 />
+            <div className="flex items-center gap-6">
+              <div className="hidden lg:flex items-center gap-4 text-slate-500">
+                <span className="material-symbols-outlined cursor-pointer hover:text-blue-900 transition-colors">notifications</span>
+                <span className="material-symbols-outlined cursor-pointer hover:text-blue-900 transition-colors">account_balance_wallet</span>
+              </div>
+              <div className="h-px w-6 bg-slate-200 rotate-90 mx-2"></div>
+              <div className="flex items-center gap-3">
+                 <button 
+                  onClick={() => navigate('/landlord/create-listing')}
+                  className="bg-primary text-white px-5 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-md hover:scale-105 transition-all"
+                >
+                  Create Listing
+                </button>
+                <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-primary-container shadow-sm cursor-pointer" onClick={() => navigate('/landlord/settings')}>
+                  <img 
+                    alt="User profile" 
+                    src={profileData?.user?.avatar || user?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuADSb4LBrUvOv--7YkD8ee9Oo5KvCqNbtbBqK4RygeLF9KMlut2f_udkKrfZaavlZTuvXxZZWrn2R-_OFCU5ZlY2_W49EeJzJdxk4gqc96m1faGPthqtjC6MSQ3qWfe2ro77WYnykgHMR7dnHIT93-N8R-_CNdV_QWSduRZrTA37AgbyOGVoM16_6BvYalIwaJC4OkKvLOHbIVLUT4RWvdFk8A8RgJK8WPPQQ9uLGVcFP7EV1gTErxXnWczGMJ048uHgGSYg567GwQ"}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Dashboard Content */}
-        <div className="p-8 space-y-12 max-w-[1600px] mx-auto text-left">
-          {activeTab === 'overview' && (
-            <>
-              {/* Hero Title Section */}
-              <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                  <h2 className="text-4xl font-extrabold tracking-tight text-primary mb-2 font-headline italic">Estate Overview</h2>
-                  <p className="text-on-surface-variant max-w-xl font-medium italic opacity-80 leading-relaxed">
-                    Welcome back, Curator. Your portfolio is currently performing 12% above market average in the Nairobi metropolitan area.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button className="flex items-center gap-2 px-6 py-3 rounded-full bg-surface-container-lowest text-primary font-black uppercase tracking-widest text-[10px] shadow-sm hover:bg-surface-container transition-all border border-slate-100">
-                    <span className="material-symbols-outlined text-lg">file_download</span>
-                    Quick Export
-                  </button>
-                  <button 
-                    onClick={() => navigate('/landlord/concierge')}
-                    className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-xl hover:scale-105 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-lg">smart_toy</span>
-                    AI Advisor
-                  </button>
-                </div>
-              </section>
-
-              {/* KPI Cards Grid */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-                <div className="bg-surface-container-low p-8 rounded-[2rem] flex flex-col justify-between min-h-[220px] shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <span className="material-symbols-outlined text-7xl">payments</span>
-                  </div>
-                  <div className="flex justify-between items-start relative z-10">
-                    <span className="material-symbols-outlined text-primary bg-primary-fixed p-3 rounded-2xl shadow-inner">payments</span>
-                    <span className="text-secondary font-black text-[10px] flex items-center gap-1 bg-secondary-container px-3 py-1 rounded-full uppercase tracking-widest">
-                      <span className="material-symbols-outlined text-sm">trending_up</span> 14%
-                    </span>
-                  </div>
-                  <div className="relative z-10">
-                    <p className="text-on-surface-variant text-[11px] font-black uppercase tracking-widest mb-2 opacity-60">Total Revenue (KSh)</p>
-                    <h3 className="text-3xl font-black text-primary font-headline italic tracking-tighter">{formatCurrency(summary.total_revenue || 2840500)}</h3>
-                  </div>
-                </div>
-                <div className="bg-surface-container-low p-8 rounded-[2rem] flex flex-col justify-between min-h-[220px] shadow-sm relative overflow-hidden group text-left">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <span className="material-symbols-outlined text-7xl">calendar_month</span>
-                  </div>
-                  <div className="flex justify-between items-start relative z-10">
-                    <span className="material-symbols-outlined text-tertiary bg-tertiary-fixed p-3 rounded-2xl shadow-inner">calendar_month</span>
-                    <span className="text-on-surface-variant font-black text-[10px] uppercase tracking-widest opacity-60">Current Month</span>
-                  </div>
-                  <div className="relative z-10">
-                    <p className="text-on-surface-variant text-[11px] font-black uppercase tracking-widest mb-2 opacity-60">Active Bookings</p>
-                    <h3 className="text-3xl font-black text-primary font-headline italic tracking-tighter">42</h3>
-                  </div>
-                </div>
-                <div className="bg-surface-container-low p-8 rounded-[2rem] flex flex-col justify-between min-h-[220px] shadow-sm relative overflow-hidden group text-left">
-                   <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <span className="material-symbols-outlined text-7xl">verified</span>
-                  </div>
-                  <div className="flex justify-between items-start relative z-10">
-                    <span className="material-symbols-outlined text-secondary bg-secondary-container p-3 rounded-2xl shadow-inner">verified</span>
-                    <span className="text-secondary font-black text-[10px] uppercase tracking-widest bg-white/50 px-3 py-1 rounded-full">Platinum Status</span>
-                  </div>
-                  <div className="relative z-10">
-                    <p className="text-on-surface-variant text-[11px] font-black uppercase tracking-widest mb-2 opacity-60">Compliance Score</p>
-                    <div className="flex items-end gap-3">
-                      <h3 className="text-3xl font-black text-primary font-headline italic tracking-tighter">98%</h3>
-                      <span className="text-[9px] uppercase font-black text-outline mb-1 tracking-[0.2em] opacity-40">GavaConnect Verified</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Active Bookings Table Section */}
-              <section className="bg-surface-container-lowest rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-xl shadow-slate-200/20 text-left">
-                <div className="px-10 py-8 flex justify-between items-center bg-surface-container-low/30 border-b border-slate-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined">payments</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-primary font-headline">Active M-Pesa Confirmed Bookings</h3>
-                  </div>
-                  <button onClick={() => navigate('/landlord/revenue')} className="text-primary-container text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:translate-x-1 transition-all">
-                    View Audit Log <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                  </button>
-                </div>
-                <div className="overflow-x-auto text-left">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="text-on-surface-variant/60 text-[10px] uppercase tracking-[0.3em] font-black border-b border-slate-50">
-                        <th className="px-10 py-6">Seeker Name</th>
-                        <th className="px-10 py-6">Property Name</th>
-                        <th className="px-10 py-6">Move-in Date</th>
-                        <th className="px-10 py-6">Transaction ID</th>
-                        <th className="px-10 py-6">Status</th>
-                        <th className="px-10 py-6 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-surface-container text-left">
-                      {[ 
-                        { name: 'Amara Okoro', prop: 'The Azure Penthouse', date: 'Oct 12, 2023', tid: 'RJK90210HL', status: 'Confirmed', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD24TcEKP17sjKUQsP5F7XL81U2M1t0ActxKGJl9x29OJkMsvaTK9kPGb3kRnU6sEAhXvJv5vaLgdr4mBbbU_Vc3sMvt6PZK5e-SKdMkJrGmyWPKvsx4Hr_NjKUXRNLyB5D3Edzc0rLplT28nDqUJDin2WNORQgybOBevq7rkEHYmrKkaDLXYVh2DTXwhSLEDNLfBZLYoYD5iL0R4VHqtYCjUPPHJt7ioDvPSLqDpAbj2jqMSfLrx4t5NCZs1myVcDeMOH-r0uT5SU' },
-                        { name: 'Kofi Mensah', prop: 'Savanna Ridge Villa 4', date: 'Oct 15, 2023', tid: 'MPL77321XP', status: 'Pending Feedback', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAu_cJpu-R-OFk-Dwrt4HThkIevvgYj3bk229a3nYjPo2QLQRF0QrgA44N7iYrM47bgmX2QczlsS2dQqDI6bPsOcQWQpklHmp82KPpVwb4wiqp3D_oAauYpo7JahvX35mVXIApUGGYb7I1a9Gf4aC7MtdlsC9B2teLg2jQmdyyGZ1Wq_XmKMh9RqAbw7NYuRxAgAvfb5Om401r8_0IoZPP8wLjz9ifhZ8G9FCHSJl-isFcc8u28bceLmsk3VGK8bSECIycjKmwgtPc' },
-                        { name: 'Zahra Mahmoud', prop: 'Horizon Heights B2', date: 'Oct 20, 2023', tid: 'KLO33219WW', status: 'Confirmed', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCDHBefQ0VsuFKUswLl8dmYXpUmirW09PgBKwwD45xwNIDHPEhy4Vpw25m89fVpOTLSg-9iuq4RXJUHfnTOa-OZvTmcFBOGS1ZFsN3zpNkeCFVBHFA0O3rAeWtLcrTSZlitZnVTav5vou4O5E2-GBwjs2PYvEl60O6FQ4MJsZNw58eN4M7AIEyQEmulkXlMkCa8v1anrg_-OrZ07RpSLHGhR2dmxL0kDBnKfuQds1cVpIiUHmaLUW7Kglnoskg5N3TO_GNZWI6ccIY' }
-                      ].map((bk, i) => (
-                        <tr key={i} className="hover:bg-slate-50/80 transition-all group text-left">
-                          <td className="px-10 py-6">
-                            <div className="flex items-center gap-4">
-                              <img alt="User" className="w-10 h-10 rounded-full object-cover border border-slate-100 shadow-sm" src={bk.img} />
-                              <span className="font-bold text-primary text-sm font-headline tracking-tight">{bk.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-10 py-6 text-on-surface-variant text-xs font-black uppercase tracking-widest opacity-80">{bk.prop}</td>
-                          <td className="px-10 py-6 text-on-surface-variant text-sm font-medium">{bk.date}</td>
-                          <td className="px-10 py-6 font-mono text-[11px] text-primary font-black bg-slate-100/50 rounded-lg inline-block my-6 ml-10 px-3">{bk.tid}</td>
-                          <td className="px-10 py-6">
-                            <span className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.15em] ${bk.status === 'Confirmed' ? 'bg-secondary-container/30 text-secondary' : 'bg-tertiary-fixed text-tertiary-container'}`}>
-                              {bk.status}
-                            </span>
-                          </td>
-                          <td className="px-10 py-6 text-right">
-                            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                              <button className="w-10 h-10 bg-white shadow-sm border border-slate-100 rounded-xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all">
-                                <span className="material-symbols-outlined text-lg">chat</span>
-                              </button>
-                              <button className="w-10 h-10 bg-white shadow-sm border border-slate-100 rounded-xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all">
-                                <span className="material-symbols-outlined text-lg">visibility</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              {/* My Listings Section */}
-              <section className="space-y-8 text-left">
-                <div className="flex items-center justify-between text-left">
-                  <h3 className="text-2xl font-black text-primary font-headline italic tracking-tighter">My Listings</h3>
-                  <div className="flex items-center gap-4 text-left">
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">filter_list</span>
-                      <input className="bg-surface-container-high border-none rounded-full py-2 pl-9 pr-6 text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-container shadow-inner" placeholder="Filter listings..." type="text"/>
-                    </div>
-                    <button onClick={() => navigate('/landlord/properties')} className="px-6 py-2 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-200 transition-all">Manage All</button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 text-left">
-                  {displayListings.slice(0, 3).map((listing: any) => (
-                    <div key={listing.houseId} className="bg-surface-container-lowest rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all group border border-slate-100 text-left">
-                      <div className="relative h-56 overflow-hidden">
-                        <img alt="Property" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src={getHouseImage(listing.images?.[0])} />
-                        <div className="absolute top-4 left-4">
-                          <span className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg ${listing.status === 'active' ? 'bg-secondary text-white' : 'bg-slate-500 text-white'}`}>
-                            {listing.status || 'Active'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-8 text-left">
-                        <h4 className="text-primary font-black text-lg mb-1 truncate font-headline tracking-tight">{listing.title}</h4>
-                        <p className="text-on-surface-variant text-[11px] font-bold mb-6 flex items-center gap-2 opacity-60">
-                          <span className="material-symbols-outlined text-sm">location_on</span> {listing.location?.town || 'Nairobi'}
-                        </p>
-                        <div className="flex justify-between items-center pt-6 border-t border-slate-50 text-left">
-                          <span className="text-primary font-black text-base italic">{formatCurrency(listing.monthlyRent)}/mo</span>
-                          <div className="flex gap-2">
-                            <button onClick={() => navigate('/landlord/create-listing', { state: { edit: true, house: listing } })} className="w-10 h-10 rounded-xl bg-slate-50 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center shadow-sm">
-                              <span className="material-symbols-outlined text-lg">edit</span>
-                            </button>
-                            <button className="w-10 h-10 rounded-xl bg-slate-50 text-error hover:bg-error hover:text-white transition-all flex items-center justify-center shadow-sm group/archive relative">
-                              <span className="material-symbols-outlined text-lg">delete</span>
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/archive:block bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl whitespace-nowrap shadow-2xl">Soft Archive Only</div>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Add New Listing Card */}
-                  <button 
-                    onClick={() => navigate('/landlord/create-listing')}
-                    className="border-2 border-dashed border-outline-variant rounded-[2rem] flex flex-col items-center justify-center p-10 text-center group hover:border-primary-container transition-all hover:bg-primary-container/5 bg-slate-50/50 shadow-inner"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-6 group-hover:bg-primary-container group-hover:scale-110 transition-all shadow-md">
-                      <span className="material-symbols-outlined text-primary group-hover:text-white text-3xl">add_business</span>
-                    </div>
-                    <p className="text-primary font-black uppercase tracking-widest text-[11px] mb-2">Add New Listing</p>
-                    <p className="text-on-surface-variant text-[10px] font-medium italic opacity-60 leading-relaxed max-w-[160px]">Expand your curated portfolio today.</p>
-                  </button>
-                </div>
-              </section>
-            </>
-          )}
-
-          {activeTab === 'intelligence' && <IntelligenceHub />}
-          {activeTab === 'revenue' && <MpesaLedger payments={revenueData?.data?.payments || []} />}
-          {activeTab === 'concierge' && <AIConcierge />}
-          
-          {/* Default Content for other tabs */}
-          {!['overview', 'intelligence', 'revenue', 'concierge'].includes(activeTab) && (
-            <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 shadow-sm text-left">
-               <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                  <span className="material-symbols-outlined text-8xl mb-6">dynamic_feed</span>
-                  <h3 className="text-2xl font-black font-headline tracking-tighter uppercase">{activeTab.replace('-', ' ')}</h3>
-                  <p className="text-xs font-bold mt-2 uppercase tracking-[0.3em]">Module Synchronizing...</p>
-               </div>
-            </div>
-          )}
+        {/* Content Area */}
+        <div className="pt-24 px-8 pb-12 flex-1">
+            {renderTabContent()}
         </div>
 
-        {/* Floating Chatbot Interface */}
-        <div className="fixed bottom-12 right-12 z-50 group">
+        {/* Footer (Authority: Design System) */}
+        <footer className="w-full py-12 px-8 border-t border-slate-100 bg-white dark:bg-slate-950">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 w-full max-w-7xl mx-auto">
+            <div className="col-span-1 md:col-span-1">
+              <span className="font-headline font-bold text-blue-900 text-xl block mb-4">Savanna Horizon</span>
+              <p className="text-slate-500 text-xs leading-relaxed max-w-[200px]">High-end real estate curation and financial management across the Kenyan highlands.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="font-headline font-bold text-on-surface text-sm">Quick Links</span>
+              <button className="text-slate-500 text-xs hover:text-blue-900 text-left">Privacy Policy</button>
+              <button className="text-slate-500 text-xs hover:text-blue-900 text-left">Investment Terms</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="font-headline font-bold text-on-surface text-sm">Compliance</span>
+              <button className="text-slate-500 text-xs hover:text-blue-900 text-left">M-Pesa Disclosure</button>
+              <button className="text-slate-500 text-xs hover:text-blue-900 text-left">Tax Compliance</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="font-headline font-bold text-on-surface text-sm">Support</span>
+              <p className="text-slate-500 text-xs text-left">Help Center</p>
+              <p className="text-slate-500 text-xs text-left">Contact Admin</p>
+            </div>
+          </div>
+          <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-slate-400 font-body text-[10px]">© 2024 Savanna Horizon Real Estate. Licensed by GavaConnect.</p>
+            <div className="flex gap-6">
+              <span className="material-symbols-outlined text-slate-300 hover:text-blue-900 cursor-pointer text-lg">public</span>
+              <span className="material-symbols-outlined text-slate-300 hover:text-blue-900 cursor-pointer text-lg">share</span>
+            </div>
+          </div>
+        </footer>
+
+        {/* Floating AI Assistant (Editorial Design Rule: Glassmorphism) */}
+        <div className="fixed bottom-8 right-8 z-50">
           <button 
             onClick={() => navigate('/landlord/concierge')}
-            className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-container text-white shadow-2xl flex items-center justify-center hover:scale-110 transition-all border-4 border-white relative"
+            className="h-14 w-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative"
           >
-            <span className="material-symbols-outlined text-3xl font-variation-fill">auto_awesome</span>
-            <span className="absolute top-0 right-0 w-5 h-5 bg-tertiary rounded-full border-4 border-surface animate-pulse"></span>
+            <span className="material-symbols-outlined" style={{fontVariationSettings: "'FILL' 1"}}>smart_toy</span>
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-container opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-secondary"></span>
+            </span>
           </button>
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] h-24 flex items-center justify-around px-6 z-50 border-t border-slate-100 rounded-t-[3rem]">
-        {navItems.slice(0, 4).map(item => (
-          <button 
-            key={item.id}
-            onClick={() => navigate(`/landlord/${item.id}`)}
-            className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === item.id ? 'text-primary scale-110' : 'text-on-surface-variant opacity-40'}`}
-          >
-            <span className={`material-symbols-outlined text-2xl ${activeTab === item.id ? 'font-variation-fill' : ''}`}>{item.icon}</span>
-            <span className="text-[10px] font-black uppercase tracking-widest">{item.label.split(' ')[0]}</span>
-          </button>
-        ))}
-      </nav>
+      {/* Mobile Nav could be updated similarly if needed, but keeping it simple for now */}
     </div>
   );
 }

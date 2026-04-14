@@ -36,12 +36,44 @@ export const getBooking = async (bookingId: number) => {
   });
 };
 
-export const listBookings = async (filters: { seekerId?: number; houseId?: number }) => {
+export const listBookings = async (filters: { seekerId?: number; houseId?: number; landlordId?: number }) => {
+  if (filters.landlordId) {
+    // When filtering by landlord, join with houses to check landlordId AND return house info
+    const { locations } = await import('../db/schema.js');
+    const results = await db.select({
+      booking: bookings,
+      houseTitle: houses.title,
+      houseType: houses.houseType,
+      monthlyRent: houses.monthlyRent,
+      locationTown: locations.town,
+      locationCounty: locations.county,
+    })
+    .from(bookings)
+    .innerJoin(houses, eq(bookings.houseId, houses.houseId))
+    .leftJoin(locations, eq(houses.locationId, locations.locationId))
+    .where(eq(houses.landlordId, filters.landlordId));
+    
+    return results.map(r => ({
+      ...r.booking,
+      house: {
+        title: r.houseTitle,
+        houseType: r.houseType,
+        monthlyRent: r.monthlyRent,
+        location: { town: r.locationTown, county: r.locationCounty },
+      },
+    }));
+  }
+
+  // For non-landlord queries, use the relational API for richer data
   const conditions = [];
   if (filters.seekerId) conditions.push(eq(bookings.seekerId, filters.seekerId));
   if (filters.houseId) conditions.push(eq(bookings.houseId, filters.houseId));
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  return await db.select().from(bookings).where(whereClause);
+  
+  return await db.query.bookings.findMany({
+    where: whereClause,
+    with: { house: { with: { location: true } } },
+  });
 };
 
 export const updateBooking = async (bookingId: number, updates: any) => {

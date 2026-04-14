@@ -8,6 +8,8 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // Force Vite to always resolve a single copy of React and React DOM
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     port: 3001,
@@ -18,5 +20,8 @@ export default defineConfig({
       },
     },
   },
+  // Optional: disable source maps to get accurate error line numbers (helps debugging)
+  build: {
+    sourcemap: false,
+  },
 })
-

@@ -60,7 +60,7 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'failed',
   'refunded',
 ]);
-export const paymentMethodEnum = pgEnum('payment_method', ['mpesa', 'bank_transfer', 'cash']);
+export const paymentMethodEnum = pgEnum('payment_method', ['mpesa', 'bank_transfer', 'cash', 'card']);
 export const chatbotSessionStatusEnum = pgEnum('chatbot_session_status', [
   'active',
   'completed',
@@ -264,6 +264,8 @@ export const bookings = pgTable(
     expiresAt: timestamp('expires_at'),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
+    paymentMethod: varchar('payment_method', { length: 20 }),
+    mpesaCheckoutRequestId: varchar('mpesa_checkout_request_id', { length: 100 }),
   },
   (table) => [
     uniqueIndex('unique_active_seeker_house')
@@ -407,6 +409,7 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
   payments: many(payments),
 }));
 
+
 export const paymentsRelations = relations(payments, ({ one }) => ({
   booking: one(bookings, { fields: [payments.bookingId], references: [bookings.bookingId] }),
   payer: one(users, { fields: [payments.payerId], references: [users.userId] }),
@@ -431,23 +434,23 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
 // Using InferSelectModel / InferInsertModel (modern Drizzle API, no implicit any)
 // ─────────────────────────────────────────────
 
-export type TSUsers            = InferSelectModel<typeof users>;
-export type TIUsers            = InferInsertModel<typeof users>;
-export type TSAuth             = InferSelectModel<typeof auth>;
-export type TIAuth             = InferInsertModel<typeof auth>;
-export type TSLocations        = InferSelectModel<typeof locations>;
-export type TILocations        = InferInsertModel<typeof locations>;
-export type TSHouses           = InferSelectModel<typeof houses>;
-export type TIHouses           = InferInsertModel<typeof houses>;
-export type TSHouseImages      = InferSelectModel<typeof houseImages>;
-export type TIHouseImages      = InferInsertModel<typeof houseImages>;
-export type TSChatbotSessions  = InferSelectModel<typeof chatbotSessions>;
-export type TIChatbotSessions  = InferInsertModel<typeof chatbotSessions>;
-export type TSBookings         = InferSelectModel<typeof bookings>;
-export type TIBookings         = InferInsertModel<typeof bookings>;
-export type TSPayments         = InferSelectModel<typeof payments>;
-export type TIPayments         = InferInsertModel<typeof payments>;
-export type TSComplianceLogs   = InferSelectModel<typeof complianceLogs>;
-export type TIComplianceLogs   = InferInsertModel<typeof complianceLogs>;
-export type TSAuditLogs        = InferSelectModel<typeof auditLogs>;
-export type TIAuditLogs        = InferInsertModel<typeof auditLogs>;
+export type TSUsers = InferSelectModel<typeof users>;
+export type TIUsers = InferInsertModel<typeof users>;
+export type TSAuth = InferSelectModel<typeof auth>;
+export type TIAuth = InferInsertModel<typeof auth>;
+export type TSLocations = InferSelectModel<typeof locations>;
+export type TILocations = InferInsertModel<typeof locations>;
+export type TSHouses = InferSelectModel<typeof houses>;
+export type TIHouses = InferInsertModel<typeof houses>;
+export type TSHouseImages = InferSelectModel<typeof houseImages>;
+export type TIHouseImages = InferInsertModel<typeof houseImages>;
+export type TSChatbotSessions = InferSelectModel<typeof chatbotSessions>;
+export type TIChatbotSessions = InferInsertModel<typeof chatbotSessions>;
+export type TSBookings = InferSelectModel<typeof bookings>;
+export type TIBookings = InferInsertModel<typeof bookings>;
+export type TSPayments = InferSelectModel<typeof payments>;
+export type TIPayments = InferInsertModel<typeof payments>;
+export type TSComplianceLogs = InferSelectModel<typeof complianceLogs>;
+export type TIComplianceLogs = InferInsertModel<typeof complianceLogs>;
+export type TSAuditLogs = InferSelectModel<typeof auditLogs>;
+export type TIAuditLogs = InferInsertModel<typeof auditLogs>;

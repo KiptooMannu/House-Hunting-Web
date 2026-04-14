@@ -1,17 +1,71 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query';
+import { setCredentials, logout } from './authSlice';
+
+// Base query for all requests — includes the auth token
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl: '/api',
+  prepareHeaders: (headers) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers.set('authorization', `Bearer ${token}`);
+    }
+    return headers;
+  },
+});
+
+// Wrapper that automatically refreshes the access token on 401
+const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+  args,
+  api,
+  extraOptions
+) => {
+  let result = await rawBaseQuery(args, api, extraOptions);
+
+  if (result.error && result.error.status === 401) {
+    // Try to refresh the token
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      console.log('🔄 [API] Access token expired, attempting refresh...');
+      const refreshResult = await rawBaseQuery(
+        {
+          url: '/auth/refresh',
+          method: 'POST',
+          body: { refreshToken },
+        },
+        api,
+        extraOptions
+      );
+
+      if (refreshResult.data) {
+        const { accessToken } = refreshResult.data as { accessToken: string };
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+        
+        // Store new token
+        localStorage.setItem('token', accessToken);
+        api.dispatch(setCredentials({ user, token: accessToken }));
+        
+        console.log('✅ [API] Token refreshed successfully');
+        // Retry the original request with new token
+        result = await rawBaseQuery(args, api, extraOptions);
+      } else {
+        console.log('❌ [API] Token refresh failed, logging out');
+        api.dispatch(logout());
+        window.location.href = '/login?message=session_expired';
+      }
+    } else {
+      console.log('❌ [API] No refresh token available, logging out');
+      api.dispatch(logout());
+      window.location.href = '/login?message=session_expired';
+    }
+  }
+
+  return result;
+};
 
 export const apiSlice = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
-    baseUrl: '/api', // Proxied via vite config
-    prepareHeaders: (headers) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ['House', 'Booking', 'User', 'Payment', 'Compliance'],
   endpoints: (builder) => ({
     // Auth Endpoints
@@ -80,7 +134,10 @@ export const apiSlice = createApi({
 
     // Booking Endpoints
     getBookings: builder.query({
-      query: () => '/bookings',
+      query: (params) => ({
+        url: '/bookings',
+        params,
+      }),
       providesTags: ['Booking'],
     }),
     createBooking: builder.mutation({
