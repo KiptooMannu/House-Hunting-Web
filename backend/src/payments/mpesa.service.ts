@@ -61,24 +61,32 @@ function generatePassword(timestamp: string): string {
 
 // ===================== Helpers =====================
 export function normalizePhone(phone: string): string {
-  // Remove all non-digit characters except '+'
-  let cleaned = phone.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
-
-  // Remove leading '+' if present
-  if (cleaned.startsWith('+')) cleaned = cleaned.substring(1);
+  // Remove all non-digit characters
+  let cleaned = phone.replace(/\D/g, '');
 
   // If it starts with '0', replace with 254
-  if (cleaned.startsWith('0')) cleaned = '254' + cleaned.substring(1);
-
-  // If it's a 9-digit number starting with '7' (e.g., 712345678), add 254 prefix
-  if (cleaned.length === 9 && cleaned.startsWith('7')) cleaned = '254' + cleaned;
-
-  // If it's a 10-digit number starting with '7' (e.g., 254712345678) – already correct
-  // If it's 12 digits starting with '2547' – also correct
+  if (cleaned.startsWith('0')) {
+    cleaned = '254' + cleaned.substring(1);
+  }
+  // If it starts with '254', keep as is
+  else if (cleaned.startsWith('254')) {
+    // already correct
+  }
+  // If it's 9 digits starting with '7' (e.g., 712345678), add 254
+  else if (cleaned.length === 9 && cleaned.startsWith('7')) {
+    cleaned = '254' + cleaned;
+  }
+  // If it's 10 digits starting with '7' (e.g., 254712345678) – already correct length
+  else if (cleaned.length === 12 && cleaned.startsWith('2547')) {
+    // correct
+  }
+  // Otherwise, assume it's a 9-digit number starting with 7
+  else if (cleaned.length === 9) {
+    cleaned = '254' + cleaned;
+  }
 
   return cleaned;
 }
-
 
 // ===================== STK Push =====================
 interface STKPushParams {

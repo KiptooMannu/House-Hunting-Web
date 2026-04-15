@@ -69,11 +69,11 @@ export const getRevenue = async (c: Context) => {
   }
 };
 
-// ========== New M-PESA endpoints ==========
+// ========== M-PESA endpoints ==========
 export const initiateMpesaPayment = async (c: Context) => {
   try {
     const { houseId, moveInDate, occupants, notes, phone } = await c.req.json();
-    const userId = c.get('userId'); // from auth middleware
+    const userId = c.get('userId');
     if (!phone) return c.json({ error: 'Phone number required' }, 400);
 
     const result = await paymentService.createPendingBookingAndInitiateMpesa({
@@ -102,7 +102,7 @@ export const mpesaCallback = async (c: Context) => {
   }
 };
 
-// ========== New Stripe endpoints ==========
+// ========== Stripe endpoints ==========
 export const createStripeIntent = async (c: Context) => {
   try {
     const { houseId, moveInDate, occupants, notes, amount } = await c.req.json();

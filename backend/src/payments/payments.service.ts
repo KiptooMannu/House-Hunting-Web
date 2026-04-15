@@ -23,6 +23,10 @@ export async function createPendingBookingAndInitiateMpesa({
   notes,
   phone,
 }: MpesaInitParams) {
+
+  const [house] = await db.select({ title: houses.title }).from(houses).where(eq(houses.houseId, houseId)).limit(1);
+  const houseTitle = house?.title || 'Property';
+
   // 1. Create pending booking
   const [newBooking] = await db.insert(bookings).values({
     seekerId: userId,
@@ -37,7 +41,7 @@ export async function createPendingBookingAndInitiateMpesa({
   try {
     const amount = 2500;
     const accountRef = `BOOK-${newBooking.bookingId}`;
-    const description = `Booking fee for house #${houseId}`;
+    const description = `Payment for ${houseTitle} booking`;
 
     const stkResult = await initiateSTKPush({ phone, amount, accountRef, description });
 
