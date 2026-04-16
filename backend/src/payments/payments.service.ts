@@ -10,7 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface MpesaInitParams {
   houseId: number;
   userId: number;
-  moveInDate?: string;   // expects YYYY-MM-DD string
+  moveInDate?: string;
   occupants?: string;
   notes?: string;
   phone: string;
@@ -23,25 +23,31 @@ export async function createPendingBookingAndInitiateMpesa({
   notes,
   phone,
 }: MpesaInitParams) {
+  // Fetch house details (title and booking fee)
+  const [house] = await db
+    .select({ title: houses.title, bookingFee: houses.bookingFee })
+    .from(houses)
+    .where(eq(houses.houseId, houseId))
+    .limit(1);
 
-  const [house] = await db.select({ title: houses.title }).from(houses).where(eq(houses.houseId, houseId)).limit(1);
-  const houseTitle = house?.title || 'Property';
+  if (!house) throw new Error('House not found');
+  const amount = Number(house.bookingFee);
+  if (amount <= 0) throw new Error('Invalid booking fee amount');
 
-  // 1. Create pending booking
+  // Create pending booking with the dynamic fee
   const [newBooking] = await db.insert(bookings).values({
     seekerId: userId,
     houseId,
-    moveInDate: moveInDate || null,        // string or null
+    moveInDate: moveInDate || null,
     specialRequests: notes,
     status: 'pending_payment',
     paymentMethod: 'mpesa',
-    bookingFee: '2500',                    // numeric string
+    bookingFee: amount.toString(),
   }).returning();
 
   try {
-    const amount = 2500;
     const accountRef = `BOOK-${newBooking.bookingId}`;
-    const description = `Payment for ${houseTitle} booking`;
+    const description = `Booking fee for ${house.title}`;
 
     const stkResult = await initiateSTKPush({ phone, amount, accountRef, description });
 
@@ -86,18 +92,29 @@ export async function handleMpesaCallback(rawBody: any) {
         .set({ status: 'confirmed', confirmedAt: new Date() })
         .where(eq(bookings.bookingId, existingBooking.bookingId));
 
+      // Use the stored booking fee from the booking (not the callback amount)
+      const feeAmount = existingBooking.bookingFee;
       await trx.insert(payments).values({
         bookingId: existingBooking.bookingId,
         payerId: existingBooking.seekerId,
-        amount: (amount || 2500).toString(),
+        amount: feeAmount,
         method: 'mpesa',
         status: 'completed',
         mpesaReceiptNumber,
-        mpesaTransactionDate: transactionDate ? new Date(transactionDate) : new Date(),
+        mpesaTransactionDate: transactionDate ? new Date(transactionDate.toString().replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3T$4:$5:$6')) : new Date(),
         mpesaCheckoutRequestId: checkoutRequestId,
         paidAt: new Date(),
       });
     });
+
+    // Trigger compliance auto-log (eTIMS)
+    try {
+      const { generateETIMSReceipt } = await import('../compliance/compliance.service.js');
+      await generateETIMSReceipt(existingBooking.bookingId);
+    } catch (e) {
+      console.warn('[Payments] Compliance auto-log failed:', e);
+    }
+
     return { success: true, bookingId: existingBooking.bookingId };
   } else {
     await db.delete(bookings).where(eq(bookings.bookingId, existingBooking.bookingId));
@@ -113,7 +130,7 @@ interface StripeIntentParams {
   moveInDate?: string;
   occupants?: string;
   notes?: string;
-  amount: number;
+  // No amount parameter – we'll fetch from house
 }
 
 export async function createPendingBookingAndStripeIntent({
@@ -121,8 +138,18 @@ export async function createPendingBookingAndStripeIntent({
   userId,
   moveInDate,
   notes,
-  amount,
 }: StripeIntentParams) {
+  // Fetch booking fee from house
+  const [house] = await db
+    .select({ bookingFee: houses.bookingFee })
+    .from(houses)
+    .where(eq(houses.houseId, houseId))
+    .limit(1);
+
+  if (!house) throw new Error('House not found');
+  const amount = Number(house.bookingFee);
+  if (amount <= 0) throw new Error('Invalid booking fee amount');
+
   const [newBooking] = await db.insert(bookings).values({
     seekerId: userId,
     houseId,
@@ -164,11 +191,13 @@ export async function confirmStripePayment(paymentIntentId: string, bookingId: n
       .set({ status: 'confirmed', confirmedAt: new Date() })
       .where(eq(bookings.bookingId, bookingId));
 
-    const [booking] = await trx.select({ seekerId: bookings.seekerId }).from(bookings).where(eq(bookings.bookingId, bookingId));
+    const [booking] = await trx.select({ seekerId: bookings.seekerId, bookingFee: bookings.bookingFee })
+      .from(bookings)
+      .where(eq(bookings.bookingId, bookingId));
     await trx.insert(payments).values({
       bookingId,
       payerId: booking.seekerId,
-      amount: (paymentIntent.amount / 100).toString(),
+      amount: booking.bookingFee, // use stored fee
       method: 'card',
       status: 'completed',
       transactionReference: paymentIntent.id,
@@ -176,10 +205,18 @@ export async function confirmStripePayment(paymentIntentId: string, bookingId: n
     });
   });
 
+  // Trigger compliance auto-log (eTIMS)
+  try {
+    const { generateETIMSReceipt } = await import('../compliance/compliance.service.js');
+    await generateETIMSReceipt(bookingId);
+  } catch (e) {
+    console.warn('[Payments] Compliance auto-log failed:', e);
+  }
+
   return { success: true, bookingId };
 }
 
-// ========== STATUS POLLING ==========
+// ========== STATUS POLLING (unchanged, but ensure it returns correct amount) ==========
 export async function getPaymentStatusByCheckoutId(checkoutRequestId: string) {
   const [booking] = await db.select()
     .from(bookings)

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import type { RootState } from '../store';
-import { useGetHousesQuery, useGetTownsQuery } from '../store/apiSlice';
-import { formatCurrency, getHouseImage } from '../utils/helpers';
+import type { RootState } from '../../store';
+import { useGetHousesQuery, useGetTownsQuery } from '../../store/apiSlice';
+import { formatCurrency, getHouseImage } from '../../utils/helpers';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';

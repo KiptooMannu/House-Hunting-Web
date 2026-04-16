@@ -15,7 +15,7 @@ export default function LoadingSpinner({ text = 'Curating Your Selection...' }) 
       </div>
       <div className="space-y-3 text-center">
         <h3 className="text-xl font-black text-primary tracking-tighter uppercase">{text}</h3>
-        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.4em] opacity-50">Savanna Horizon Protocol</p>
+        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.4em] opacity-50">NestFind Kenya Protocol</p>
       </div>
     </div>
   );

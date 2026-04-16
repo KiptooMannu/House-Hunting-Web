@@ -186,4 +186,19 @@ export const listUniqueTowns = async () => {
     .where(sql`${locations.town} IS NOT NULL`)
     .orderBy(asc(locations.town));
   return results.map(r => r.town);
+};
+
+export const listUniqueLocations = async () => {
+  const { locations } = await import('../db/schema.js');
+  return await db.selectDistinct({ 
+    town: locations.town, 
+    county: locations.county 
+  })
+    .from(locations)
+    .where(and(
+      sql`${locations.town} IS NOT NULL`,
+      sql`${locations.county} IS NOT NULL`
+    ))
+    .orderBy(asc(locations.county), asc(locations.town));
+};
 };

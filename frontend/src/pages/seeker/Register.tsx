@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useRegisterMutation } from '../store/apiSlice';
+import { useRegisterMutation } from '../../store/apiSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,7 @@ export default function Register() {
       };
       
       const res = await register(payload).unwrap();
-      alert(`Savanna Horizon account created! Your temporary security code is: ${res.temporaryPassword}. Please authorize your first entry.`);
+      alert(`NestFind Kenya account created! Your temporary security code is: ${res.temporaryPassword}. Please authorize your first entry.`);
       navigate('/login');
     } catch (err: any) {
       setError(err?.data?.error || err?.data?.message || 'Registry initialization failed. Please verify your connection.');
@@ -92,7 +92,7 @@ export default function Register() {
               <span className="material-symbols-outlined text-secondary-fixed text-3xl">shield_lock</span>
               <div>
                 <p className="font-black text-[10px] uppercase tracking-widest text-secondary-fixed mb-1">Bank-Grade Security</p>
-                <p className="text-xs opacity-70 font-medium">Your data is encrypted and protected by Savanna's highest tier protocols.</p>
+                <p className="text-xs opacity-70 font-medium">Your data is encrypted and protected by NestFind's highest tier protocols.</p>
               </div>
             </div>
             <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
@@ -128,7 +128,7 @@ export default function Register() {
           <div className="mb-10 text-left">
             <span className="text-secondary font-black text-[10px] uppercase tracking-[0.4em] mb-4 block">Registry Protocol</span>
             <h2 className="font-headline font-black text-4xl text-primary mb-2 italic tracking-tighter">Create Your Account.</h2>
-            <p className="text-on-surface-variant text-sm font-medium italic">Define your journey in the Savanna Horizon ecosystem.</p>
+            <p className="text-on-surface-variant text-sm font-medium italic">Define your journey in the NestFind Kenya ecosystem.</p>
           </div>
 
           {error && <Badge variant="destructive" className="mb-8 p-4 w-full rounded-xl shadow-lg border-none font-bold animate-in fade-in slide-in-from-top-2">{error}</Badge>}

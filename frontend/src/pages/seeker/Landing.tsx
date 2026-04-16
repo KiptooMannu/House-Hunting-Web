@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetHousesQuery } from '../store/apiSlice';
-import { formatCurrency, getHouseImage } from '../utils/helpers';
+import { useGetHousesQuery } from '../../store/apiSlice';
+import { formatCurrency, getHouseImage } from '../../utils/helpers';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -168,7 +168,7 @@ export default function Landing() {
               <h2 className="font-headline text-5xl lg:text-7xl font-extrabold text-primary leading-tight tracking-tighter text-left">Curated High-Value<br/><span className="italic">Collections.</span></h2>
             </div>
             <p className="text-on-surface-variant max-w-sm mb-4 font-medium italic opacity-60 leading-relaxed text-left">
-              Each property in this anthology is vetted through a 140-point institutional-grade compliance check by Savanna Horizon.
+              Each property in this anthology is vetted through a 140-point institutional-grade compliance check by NestFind Kenya.
             </p>
           </div>
 

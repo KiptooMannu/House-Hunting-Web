@@ -6,7 +6,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-20 px-6 lg:px-12 max-w-[1440px] mx-auto mb-32 text-left">
           <div className="md:col-span-1 text-left">
             <Link to="/" className="text-xl font-black text-primary block mb-8 uppercase tracking-widest">
-                SAVANNA<span className="font-light">HORIZON</span>
+                NESTFIND<span className="font-light">KENYA</span>
             </Link>
             <p className="text-on-surface-variant text-sm font-light leading-relaxed mb-8">
                 Redefining luxury real estate in Kenya through editorial presentation and intelligent infrastructure.
@@ -44,7 +44,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="max-w-[1440px] mx-auto px-6 lg:px-12 flex flex-col md:flex-row justify-between items-center gap-8 pt-12 border-t border-slate-50">
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">© 2024 SAVANNA HORIZON ASSET MANAGEMENT. ALL RIGHTS RESERVED.</p>
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">© 2024 NESTFIND KENYA ASSET MANAGEMENT. ALL RIGHTS RESERVED.</p>
           <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <Link className="hover:text-primary transition-colors" to="/privacy">Privacy</Link>
             <Link className="hover:text-primary transition-colors" to="/terms">Terms</Link>

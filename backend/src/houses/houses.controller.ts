@@ -27,6 +27,7 @@ export const createHouse = async (c: Context) => {
         bedrooms: body['bedrooms'],
         bathrooms: body['bathrooms'],
         monthlyRent: body['rent'] || body['monthlyRent'],
+        bookingFee: body['bookingFee'],
         dailyRate: body['dailyRate'],
         county: body['county'],
         locationName: body['locationName'],
@@ -113,6 +114,15 @@ export const listHouses = async (c: Context) => {
 export const listUniqueTowns = async (c: Context) => {
   try {
     const results = await houseService.listUniqueTowns();
+    return c.json(results, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const listUniqueLocations = async (c: Context) => {
+  try {
+    const results = await houseService.listUniqueLocations();
     return c.json(results, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

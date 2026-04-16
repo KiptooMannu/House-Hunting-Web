@@ -8,10 +8,10 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="space-y-8 text-left">
             <Link to="/" className="text-2xl font-black text-primary dark:text-blue-400 font-headline italic tracking-tighter">
-              Savanna<span className="font-light not-italic opacity-50">Horizon</span>
+              NestFind<span className="font-light not-italic opacity-50">Kenya</span>
             </Link>
             <p className="text-on-surface-variant/80 text-sm leading-relaxed font-medium italic text-left">
-              Elevating the Kenyan real estate landscape through institutional-grade digital infrastructure and curated curation. Precision verified by Savanna Horizon.
+              Elevating the Kenyan real estate landscape through institutional-grade digital infrastructure and curated curation. Precision verified by NestFind Kenya.
             </p>
             <div className="flex gap-6 text-left">
               <span className="material-symbols-outlined text-slate-400 hover:text-primary cursor-pointer transition-all hover:scale-110">public</span>
@@ -60,7 +60,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-24 pt-10 border-t border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-6 text-left">
-          <span className="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">© 2024 Savanna Horizon Curator. Institutional Rights Reserved.</span>
+          <span className="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">© 2024 NestFind Kenya Curator. Institutional Rights Reserved.</span>
           <div className="flex items-center gap-4 text-left">
             <div className="flex items-center gap-2 group cursor-help text-left">
                <div className="w-2 h-2 rounded-full bg-secondary animate-pulse"></div>

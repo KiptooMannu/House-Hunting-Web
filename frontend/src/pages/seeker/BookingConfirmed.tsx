@@ -1,5 +1,5 @@
 import { useSearchParams, Link } from 'react-router-dom';
-import { useGetBookingsQuery } from '../store/apiSlice';
+import { useGetBookingsQuery } from '../../store/apiSlice';
 
 export default function BookingConfirmed() {
   const [params] = useSearchParams();

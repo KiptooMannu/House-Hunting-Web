@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
-import { formatCurrency } from '../utils/helpers';
+import { useSendMessageMutation, useResetSessionMutation } from '../../store/apiSlice';
+import { formatCurrency } from '../../utils/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,6 +13,7 @@ type ChatMsg = { role: 'user' | 'assistant'; text: string };
 
 export default function Chatbot() {
   const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([
@@ -20,30 +21,36 @@ export default function Chatbot() {
   ]);
   const [input, setInput] = useState('');
   const [houses, setHouses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [sendChatMessage, { isLoading: loading }] = useSendMessageMutation();
+  const [resetChatSession] = useResetSessionMutation();
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function sendMessage() {
     const message = input.trim();
-    if (!message) return;
+    if (!message || loading) return;
 
     setError('');
-    setLoading(true);
     try {
       setMessages((prev) => [...prev, { role: 'user', text: message }]);
       setInput('');
 
-      const res = await api.post('/chatbot/message', {
+      const res = await sendChatMessage({
         session_id: sessionId ?? undefined,
         message,
-      });
+      }).unwrap();
 
-      const data = res.data?.data;
-      setSessionId(data?.session_id ?? null);
+      // Adjust based on the actual API response structure (checking both dats.data and direct res)
+      const data = res.data || res;
+      setSessionId(data?.session_id || data?.sessionId || sessionId);
 
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', text: data?.reply ?? '' },
+        { role: 'assistant', text: data?.reply || "I've analyzed your request." },
       ]);
 
       if (Array.isArray(data?.houses)) {
@@ -52,9 +59,8 @@ export default function Chatbot() {
         setHouses([]);
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to send message.');
-    } finally {
-      setLoading(false);
+      console.error(err);
+      setError(err?.data?.message || err?.data?.error || 'Failed to send message.');
     }
   }
 
@@ -62,7 +68,7 @@ export default function Chatbot() {
     setError('');
     try {
       if (sessionId) {
-        await api.post('/chatbot/reset', { session_id: sessionId });
+        await resetChatSession({ session_id: sessionId }).unwrap();
       }
     } catch {
     } finally {
@@ -124,6 +130,7 @@ export default function Chatbot() {
                         <div className="p-6 bg-white rounded-3xl rounded-tl-sm w-32 h-12 border border-slate-50"></div>
                     </div>
                  )}
+                 <div ref={scrollRef} />
               </div>
            </ScrollArea>
 

@@ -43,7 +43,7 @@ export default function Navbar() {
       <nav className="flex justify-between items-center px-8 lg:px-12 py-5 max-w-full mx-auto w-full">
         <div className="flex items-center gap-16">
           <Link to="/" className="text-2xl font-black tracking-tighter text-primary dark:text-blue-400 font-headline uppercase italic">
-            Savanna<span className="font-light opacity-50 not-italic">Horizon</span>
+            NestFind<span className="font-light opacity-50 not-italic">Kenya</span>
           </Link>
           <div className="hidden lg:flex items-center gap-10">
             {navLinks.map((link) => (

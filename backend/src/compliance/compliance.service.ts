@@ -1,7 +1,7 @@
 // src/modules/compliance/compliance.service.ts
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db/db.js';
-import { complianceLogs } from '../db/schema.js';
+import { complianceLogs, bookings } from '../db/schema.js';
 
 export const createLog = async (data: any) => {
   const [newLog] = await db.insert(complianceLogs).values(data).returning();
@@ -37,15 +37,15 @@ export const deleteLog = async (logId: number) => {
 
 export const sendRevenueToGava = async (payload: any) => {
   const { periodStart, periodEnd, totalRevenueKes, totalBookingFees } = payload;
-  
+
   // ==========================================
   // eTIMS Financial Routing
   // ==========================================
-  
+
   // 1. Pipeline A: Monthly Rental Income (MRI) - 7.5% tax on Base Rent to the Landlord
   const baseRentRevenue = Number(totalRevenueKes) || 0;
   const mriTaxCalculated = baseRentRevenue * 0.075;
-  
+
   // 2. Pipeline B: Platform Service Fees - 16% VAT to the Platform
   const platformFees = Number(totalBookingFees) || 0;
   const vatCalculated = platformFees * 0.16;
@@ -66,11 +66,11 @@ export const sendRevenueToGava = async (payload: any) => {
     const kraPayload = {
       payerPin: KRA_PIN,
       receiptDetails: {
-         mri_base_amount: baseRentRevenue,
-         mri_tax: mriTaxCalculated,
-         vat_base_amount: platformFees,
-         vat_tax: vatCalculated,
-         levy: tourismLevyCalculated
+        mri_base_amount: baseRentRevenue,
+        mri_tax: mriTaxCalculated,
+        vat_base_amount: platformFees,
+        vat_tax: vatCalculated,
+        levy: tourismLevyCalculated
       },
       periodStart,
       periodEnd
@@ -82,19 +82,19 @@ export const sendRevenueToGava = async (payload: any) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-App-Id': APP_ID, // Apigee Gateway identifier
+        'X-App-Id': APP_ID,
         'X-Payer-Pin': KRA_PIN
       },
       body: JSON.stringify(kraPayload),
     });
 
     if (kraReq.ok) {
-       const kraData = await kraReq.json();
-       apiRequestId = kraData.transactionId || `req_${Date.now()}_eTIMS_SANDBOX`;
-       kraResponseStatus = 'submitted_sandbox';
+      const kraData = await kraReq.json();
+      apiRequestId = kraData.transactionId || `req_${Date.now()}_eTIMS_SANDBOX`;
+      kraResponseStatus = 'submitted_sandbox';
     } else {
-       console.warn(`[GavaConnect] Sandbox rejected payload: HTTP ${kraReq.status}. Falling back to standard queue.`);
-       kraResponseStatus = 'queued_locally';
+      console.warn(`[GavaConnect] Sandbox rejected payload: HTTP ${kraReq.status}. Falling back to standard queue.`);
+      kraResponseStatus = 'queued_locally';
     }
   } catch (err: any) {
     console.warn(`[GavaConnect] KRA Sandbox unreachable (${err.message}). Defaulting to offline sync.`);
@@ -116,9 +116,11 @@ export const sendRevenueToGava = async (payload: any) => {
       periodEnd: periodEnd ? new Date(periodEnd) : undefined,
       totalRevenueKes,
       totalBookingFees,
+      bookingId: payload.bookingId, // Link to booking
+      initiatedById: payload.initiatedById, // Link to user
       gavaConnectRequestId: apiRequestId,
-      gavaConnectResponse: JSON.stringify({ 
-        message: 'eTIMS Receipt execution completed', 
+      gavaConnectResponse: JSON.stringify({
+        message: 'eTIMS Receipt execution completed',
         mriTax: mriTaxCalculated,
         vatTax: vatCalculated,
         kraPinUsed: KRA_PIN,
@@ -129,9 +131,9 @@ export const sendRevenueToGava = async (payload: any) => {
     .returning();
 
   return {
-    message: kraResponseStatus === 'submitted_sandbox' 
-        ? 'Successfully generated KRA Sandbox eTIMS Receipt' 
-        : 'Revenue logged locally for offline KRA sync',
+    message: kraResponseStatus === 'submitted_sandbox'
+      ? 'Successfully generated KRA Sandbox eTIMS Receipt'
+      : 'Revenue logged locally for offline KRA sync',
     logId: log.logId,
     gavaConnectRequestId: log.gavaConnectRequestId,
     taxBreakdown: { mriTaxCalculated, vatCalculated }
@@ -161,6 +163,60 @@ export const submitNilFiling = async (payload: any) => {
 };
 
 // ==========================================
+// Automated eTIMS Receipt Generation (Wiring)
+// ==========================================
+export const generateETIMSReceipt = async (bookingId: number) => {
+  try {
+    // 1. Idempotency Check: Don't generate if a non-rejected log already exists for this booking
+    const existingLog = await db.query.complianceLogs.findFirst({
+      where: (logs, { eq, and, ne }) => and(
+        eq(logs.bookingId, bookingId),
+        ne(logs.status, 'rejected')
+      )
+    });
+
+    if (existingLog) {
+      console.log(`[Compliance] eTIMS receipt already exists for booking ${bookingId} (Log #${existingLog.logId})`);
+      return { existing: true, logId: existingLog.logId };
+    }
+
+    // 2. Fetch full context: Booking -> House -> Landlord
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.bookingId, bookingId),
+      with: {
+        house: {
+          with: { landlord: true }
+        }
+      }
+    });
+
+    if (!booking) {
+      console.error(`[Compliance] Cannot generate receipt: Booking ${bookingId} not found.`);
+      return null;
+    }
+
+    // 3. Define payload for sendRevenueToGava
+    const payload = {
+      periodStart: new Date().toISOString(),
+      periodEnd: new Date().toISOString(),
+      totalRevenueKes: Number(booking.bookingFee),
+      totalBookingFees: 500, // Static platform fee for now
+      bookingId: booking.bookingId, // Pass the new field through
+      initiatedById: booking.seekerId
+    };
+
+    console.log(`[Compliance] Triggering automated eTIMS for booking ${bookingId}...`);
+
+    // 4. Call the existing GavaConnect pipeline
+    // Note: We'll modify sendRevenueToGava slightly to accept and save bookingId
+    return await sendRevenueToGava(payload);
+  } catch (error) {
+    console.error(`[Compliance] Automated generation failed for booking ${bookingId}:`, error);
+    throw error;
+  }
+};
+
+// ==========================================
 // KRA TCC Validation (OAuth Implementation)
 // ==========================================
 export const validateLandlordTCC = async (kraPIN: string, tccNumber: string) => {
@@ -170,58 +226,59 @@ export const validateLandlordTCC = async (kraPIN: string, tccNumber: string) => 
   const tokenUrl = 'https://sbx.kra.go.ke/v1/token/generate?grant_type=client_credentials';
 
   if (!consumerKey || !consumerSecret) {
-     return { isValid: true, message: 'Simulated Validation (Missing credentials)' };
+    return { isValid: true, message: 'Simulated Validation (Missing credentials)' };
   }
 
   try {
-     // 1. Generate Apigee Access Token
-     const authHeader = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-     console.log(`[KRA] Generating OAuth Token...`);
-     const tokenReq = await fetch(tokenUrl, {
-        method: 'GET',
-        headers: { 'Authorization': `Basic ${authHeader}` }
-     });
-     
-     if (!tokenReq.ok) throw new Error('OAuth token generation failed');
-     const tokenData = await tokenReq.json();
-     const accessToken = tokenData.access_token;
+    // 1. Generate Apigee Access Token
+    const authHeader = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    console.log(`[KRA] Generating OAuth Token...`);
+    const tokenReq = await fetch(tokenUrl, {
+      method: 'GET',
+      headers: { 'Authorization': `Basic ${authHeader}` }
+    });
 
-     // 2. Validate PIN against TCC API
-     console.log(`[KRA] Validating TCC for PIN: ${kraPIN}...`);
-     const validationReq = await fetch(tccUrl, {
-        method: 'POST',
-        headers: {
-           'Authorization': `Bearer ${accessToken}`,
-           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ kraPIN, tccNumber }) 
-     });
+    if (!tokenReq.ok) throw new Error('OAuth token generation failed');
+    const tokenData = await tokenReq.json();
+    const accessToken = tokenData.access_token;
 
-     if (validationReq.ok) {
-        const responseData = await validationReq.json();
-        
-        // KRA returns "ResponseCode": "83000" and Status: "OK" for success
-        if (responseData.ResponseCode === '83000' || responseData.Status === 'OK') {
-           return { 
-              isValid: true, 
-              kraResponse: responseData, 
-              message: `TCC Validation successful for ${kraPIN}`
-           };
-        } else {
-           return { 
-              isValid: false, 
-              kraResponse: responseData, 
-              message: responseData.Message || 'Invalid TCC' 
-           };
-        }
-     } else {
-        return { 
-           isValid: false, 
-           message: `TCC Validation failed (HTTP ${validationReq.status})` 
+    // 2. Validate PIN against TCC API
+    console.log(`[KRA] Validating TCC for PIN: ${kraPIN}...`);
+    const validationReq = await fetch(tccUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ kraPIN, tccNumber })
+    });
+
+    if (validationReq.ok) {
+      const responseData = await validationReq.json();
+
+      // KRA returns "ResponseCode": "83000" and Status: "OK" for success
+      if (responseData.ResponseCode === '83000' || responseData.Status === 'OK') {
+        return {
+          isValid: true,
+          kraResponse: responseData,
+          message: `TCC Validation successful for ${kraPIN}`
         };
-     }
+      } else {
+        return {
+          isValid: false,
+          kraResponse: responseData,
+          message: responseData.Message || 'Invalid TCC'
+        };
+      }
+    } else {
+      return {
+        isValid: false,
+        message: `TCC Validation failed (HTTP ${validationReq.status})`
+      };
+    }
   } catch (error: any) {
-     console.warn(`[KRA Sandbox] TCC Check failed: ${error.message}. Returning fallback True for dev purposes.`);
-     return { isValid: true, mock: true, error: error.message };
+    console.warn(`[KRA Sandbox] TCC Check failed: ${error.message}. Returning fallback True for dev purposes.`);
+    return { isValid: true, mock: true, error: error.message };
   }
 };
+

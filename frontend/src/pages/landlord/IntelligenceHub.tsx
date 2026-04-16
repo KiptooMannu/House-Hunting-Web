@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../../utils/helpers';
+import { formatCurrency } from '../../utils/helpers';
 
 export default function IntelligenceHub() {
 

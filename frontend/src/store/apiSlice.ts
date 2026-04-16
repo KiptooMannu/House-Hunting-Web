@@ -167,14 +167,29 @@ export const apiSlice = createApi({
     }),
     createMpesaPush: builder.mutation({
       query: (data) => ({
-        url: '/payments/mpesa/stk-push',
+        url: '/payments/mpesa/stkpush',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Payment', 'Booking'],
+    }),
+    createStripeIntent: builder.mutation({
+      query: (data) => ({
+        url: '/payments/card/create-intent',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+    confirmStripePayment: builder.mutation({
+      query: (data) => ({
+        url: '/payments/card/confirm',
         method: 'POST',
         body: data,
       }),
       invalidatesTags: ['Payment', 'Booking'],
     }),
     getPaymentStatus: builder.query({
-      query: (id) => `/payments/${id}`,
+      query: (id) => `/payments/status/${id}`, // Corrected status path to match router
       providesTags: (_result, _error, id) => [{ type: 'Payment', id }],
     }),
 
@@ -195,6 +210,9 @@ export const apiSlice = createApi({
     }),
     getTowns: builder.query({
       query: () => '/houses/meta/towns',
+    }),
+    getLocations: builder.query({
+      query: () => '/houses/meta/locations',
     }),
     
     // Compliance Endpoints
@@ -246,6 +264,7 @@ export const {
   useUpdateProfileMutation,
   useGetHousesQuery,
   useGetTownsQuery,
+  useGetLocationsQuery,
   useGetHouseByIdQuery,
   useCreateHouseMutation,
   useUpdateHouseMutation,
@@ -255,6 +274,8 @@ export const {
   useUpdateBookingStatusMutation,
   useGetRevenueQuery,
   useCreateMpesaPushMutation,
+  useCreateStripeIntentMutation,
+  useConfirmStripePaymentMutation,
   useGetPaymentStatusQuery,
   useSendMessageMutation,
   useResetSessionMutation,

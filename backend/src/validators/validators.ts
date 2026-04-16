@@ -67,6 +67,7 @@ export const houseSchema = z.object({
   landlordId: z.number().int().positive(),
   locationId: z.number().int().positive().optional().nullable(),
   title: z.string().min(1),
+  bookingFee: z.string().or(z.number()).optional().transform(v => v ? Number(v) : 0),
   description: z.string().optional(),
   houseType: HouseTypeEnum,
   furnishing: FurnishingEnum.default('unfurnished'),

@@ -30,7 +30,25 @@ export const listBookings = async (c: Context) => {
     const seekerId = c.req.query('seekerId') ? parseInt(c.req.query('seekerId')!) : undefined;
     const houseId = c.req.query('houseId') ? parseInt(c.req.query('houseId')!) : undefined;
     const landlordId = c.req.query('landlordId') ? parseInt(c.req.query('landlordId')!) : undefined;
-    const bookings = await bookingService.listBookings({ seekerId, houseId, landlordId });
+
+    // Ownership Enforcement Logic
+    const authUserId = c.get('userId');
+    const authRole = c.get('userRole');
+
+    let effectiveSeekerId = seekerId;
+    let effectiveLandlordId = landlordId;
+
+    if (authRole === 'landlord') {
+      effectiveLandlordId = authUserId;
+    } else if (authRole === 'seeker') {
+      effectiveSeekerId = authUserId;
+    }
+
+    const bookings = await bookingService.listBookings({ 
+      seekerId: effectiveSeekerId, 
+      houseId, 
+      landlordId: effectiveLandlordId 
+    });
     return c.json(bookings, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

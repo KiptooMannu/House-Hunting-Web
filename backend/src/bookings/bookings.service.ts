@@ -1,28 +1,22 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/db.js';
-import { bookings, houses } from '../db/schema.js';
+import { bookings, houses, locations } from '../db/schema.js';
 
 export const createBooking = async (data: any) => {
-  // Extract houseId to fetch dynamic pricing
+  // ... (keep logic same)
   const houseQuery = await db.query.houses.findFirst({
     where: eq(houses.houseId, data.houseId),
   });
 
   if (!houseQuery) throw new Error('House not found');
 
-  // Hardcode the Platform Fee calculation (e.g. 5% of monthly rent, minimum 1500 KSh)
-  // This fee is subject to 16% VAT later.
   const calculatedFee = Math.max(Number(houseQuery.monthlyRent) * 0.05, 1500);
-
-  // The base price (is the rental amount) which is MRI eligible
-  const isFurnished = houseQuery.furnishing === 'furnished';
   const basePrice = houseQuery.monthlyRent;
 
   const finalData = {
     ...data,
-    totalPrice: basePrice, // MRI eligible rent
-    bookingFee: calculatedFee, // VAT/Commercial eligible fee
-    // Note: We can also add an internal tag that it's Tourism Levy applicable if furnished/short-term
+    totalPrice: basePrice,
+    bookingFee: calculatedFee,
   };
 
   const [newBooking] = await db.insert(bookings).values(finalData).returning();
@@ -37,34 +31,27 @@ export const getBooking = async (bookingId: number) => {
 };
 
 export const listBookings = async (filters: { seekerId?: number; houseId?: number; landlordId?: number }) => {
+  // If landlordId is provided, filter bookings via the houses table
   if (filters.landlordId) {
-    // When filtering by landlord, join with houses to check landlordId AND return house info
-    const { locations } = await import('../db/schema.js');
-    const results = await db.select({
-      booking: bookings,
-      houseTitle: houses.title,
-      houseType: houses.houseType,
-      monthlyRent: houses.monthlyRent,
-      locationTown: locations.town,
-      locationCounty: locations.county,
-    })
-    .from(bookings)
-    .innerJoin(houses, eq(bookings.houseId, houses.houseId))
-    .leftJoin(locations, eq(houses.locationId, locations.locationId))
-    .where(eq(houses.landlordId, filters.landlordId));
-    
-    return results.map(r => ({
-      ...r.booking,
-      house: {
-        title: r.houseTitle,
-        houseType: r.houseType,
-        monthlyRent: r.monthlyRent,
-        location: { town: r.locationTown, county: r.locationCounty },
+    return await db.query.bookings.findMany({
+      where: (bookings, { exists }) => exists(
+        db.select()
+          .from(houses)
+          .where(
+            and(
+              eq(houses.houseId, bookings.houseId),
+              eq(houses.landlordId, Number(filters.landlordId))
+            )
+          )
+      ),
+      with: { 
+        house: { with: { location: true, images: true } },
+        payments: true 
       },
-    }));
+    });
   }
 
-  // For non-landlord queries, use the relational API for richer data
+  // Standard filtering for seekers or specific houses
   const conditions = [];
   if (filters.seekerId) conditions.push(eq(bookings.seekerId, filters.seekerId));
   if (filters.houseId) conditions.push(eq(bookings.houseId, filters.houseId));
@@ -72,7 +59,10 @@ export const listBookings = async (filters: { seekerId?: number; houseId?: numbe
   
   return await db.query.bookings.findMany({
     where: whereClause,
-    with: { house: { with: { location: true } } },
+    with: { 
+      house: { with: { location: true, images: true } },
+      payments: true 
+    },
   });
 };
 

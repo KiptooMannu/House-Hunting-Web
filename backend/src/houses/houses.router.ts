@@ -9,6 +9,7 @@ housesRouter.post('/', authMiddleware, adminOrLandlordMiddleware, houseControlle
 
 // Global list and details are public
 housesRouter.get('/meta/towns', houseController.listUniqueTowns);
+housesRouter.get('/meta/locations', houseController.listUniqueLocations);
 housesRouter.get('/', houseController.listHouses);
 housesRouter.get('/:houseId', houseController.getHouse);
 

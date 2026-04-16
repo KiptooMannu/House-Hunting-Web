@@ -9,3 +9,4 @@ chatbotSessionsRouter.post('/', sessionController.createSession);
 chatbotSessionsRouter.put('/:sessionId', sessionController.updateSession);
 chatbotSessionsRouter.delete('/:sessionId', sessionController.deleteSession);
 chatbotSessionsRouter.post('/message', sessionController.sendMessage);
+chatbotSessionsRouter.post('/reset', (c) => c.json({ message: 'Session reset successful' }, 200));

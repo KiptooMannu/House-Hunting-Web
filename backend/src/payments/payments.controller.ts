@@ -105,7 +105,7 @@ export const mpesaCallback = async (c: Context) => {
 // ========== Stripe endpoints ==========
 export const createStripeIntent = async (c: Context) => {
   try {
-    const { houseId, moveInDate, occupants, notes, amount } = await c.req.json();
+    const { houseId, moveInDate, occupants, notes } = await c.req.json(); // no amount field
     const userId = c.get('userId');
     const result = await paymentService.createPendingBookingAndStripeIntent({
       houseId,
@@ -113,7 +113,7 @@ export const createStripeIntent = async (c: Context) => {
       moveInDate,
       occupants,
       notes,
-      amount: amount || 2500,
+      // amount is removed – service will fetch from house
     });
     return c.json(result, 200);
   } catch (error: any) {

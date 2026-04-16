@@ -25,7 +25,7 @@ app.route('/api/users', usersRouter);
 app.route('/api/locations', locationsRouter);
 app.route('/api/houses', housesRouter);
 app.route('/api/house-images', houseImagesRouter);
-app.route('/api/chatbot-sessions', chatbotSessionsRouter);
+app.route('/api/chatbot', chatbotSessionsRouter);
 app.route('/api/bookings', bookingsRouter);
 app.route('/api/payments', paymentsRouter);
 app.route('/api/compliance-logs', complianceLogsRouter);

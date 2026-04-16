@@ -75,6 +75,9 @@ export const complianceActionEnum = pgEnum('compliance_action', [
 export const complianceStatusEnum = pgEnum('compliance_status', [
   'pending',
   'submitted',
+  'submitted_sandbox',
+  'queued_locally',
+  'offline_sync_pending',
   'acknowledged',
   'rejected',
 ]);
@@ -171,6 +174,8 @@ export const houses = pgTable(
       onDelete: 'set null',
     }),
     title: varchar('title', { length: 255 }).notNull(),
+    // In houses table, add:
+    bookingFee: decimal('booking_fee', { precision: 10, scale: 2 }).default('0.00'),
     description: text('description'),
     houseType: houseTypeEnum('house_type').notNull(),
     furnishing: furnishingEnum('furnishing').notNull().default('unfurnished'),
@@ -320,6 +325,9 @@ export const complianceLogs = pgTable('compliance_logs', {
   periodEnd: date('period_end'),
   totalRevenueKes: decimal('total_revenue_kes', { precision: 14, scale: 2 }),
   totalBookingFees: decimal('total_booking_fees', { precision: 14, scale: 2 }),
+  bookingId: integer('booking_id').references(() => bookings.bookingId, {
+    onDelete: 'set null',
+  }),
   gavaConnectRequestId: varchar('gava_connect_request_id', { length: 255 }),
   gavaConnectResponse: text('gava_connect_response'), // JSON
   acknowledgedAt: timestamp('acknowledged_at'),
@@ -419,6 +427,10 @@ export const complianceLogsRelations = relations(complianceLogs, ({ one }) => ({
   initiatedBy: one(users, {
     fields: [complianceLogs.initiatedById],
     references: [users.userId],
+  }),
+  booking: one(bookings, {
+    fields: [complianceLogs.bookingId],
+    references: [bookings.bookingId],
   }),
 }));
 

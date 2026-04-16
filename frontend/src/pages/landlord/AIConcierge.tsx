@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import api from '../../../api/axios';
+import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useSendMessageMutation } from '../../store/apiSlice';
 
 export default function AIConcierge() {
+  const location = useLocation();
   const [messages, setMessages] = useState<{ role: string; text: string; time: string; isThinking?: boolean }[]>([
     { 
       role: 'bot', 
@@ -10,26 +12,50 @@ export default function AIConcierge() {
     }
   ]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [sendChatMessage, { isLoading: loading }] = useSendMessageMutation();
 
-  async function sendMessage() {
-    if (!input.trim() || loading) return;
-    const userMsg = { role: 'user', text: input, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Handle incoming data/messages from other screens
+  useEffect(() => {
+    const initialState = location.state as { message?: string };
+    if (initialState?.message) {
+      handleAutoSend(initialState.message);
+      // Clear the state so it doesn't re-trigger on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  async function handleAutoSend(text: string) {
+    const userMsg = { role: 'user', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setLoading(true);
+    
     try {
-      const res = await api.post('/chatbot/message', { message: input });
+      const res = await sendChatMessage({ message: text }).unwrap();
       const botMsg = { 
         role: 'bot', 
-        text: res.data?.data?.reply || "Analysis complete.",
+        text: res.data?.reply || res.reply || "Analysis complete. I've updated your discovery canvas with new projections.",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, botMsg]);
     } catch (error) {
-    } finally {
-      setLoading(false);
+      console.error('Chat error:', error);
     }
+  }
+
+  async function sendMessage() {
+    if (!input.trim() || loading) return;
+    const currentInput = input;
+    setInput('');
+    await handleAutoSend(currentInput);
   }
 
   return (
@@ -80,6 +106,7 @@ export default function AIConcierge() {
               <span className="text-[9px] mt-2 text-on-surface-variant font-black uppercase tracking-widest opacity-50 px-2">{m.time} • {m.role === 'bot' ? 'Savanna AI' : 'Protocol Node'}</span>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="p-8 pt-0">

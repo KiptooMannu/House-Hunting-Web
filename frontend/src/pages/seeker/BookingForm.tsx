@@ -1,9 +1,13 @@
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import type { RootState } from '../store';
-import { useGetHouseByIdQuery } from '../store/apiSlice';
-import { formatCurrency } from '../utils/helpers';
-import LoadingSpinner from '../components/LoadingSpinner';
+import type { RootState } from '../../store';
+import { 
+  useGetHouseByIdQuery, 
+  useCreateMpesaPushMutation,
+  useCreateStripeIntentMutation 
+} from '../../store/apiSlice';
+import { formatCurrency } from '../../utils/helpers';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -14,6 +18,16 @@ if (!stripePublicKey) {
   console.error('Stripe public key is missing! Set VITE_STRIPE_PUBLIC_KEY in .env');
 }
 const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
+
+// Helper to strip country code from phone for display
+const stripPhonePrefix = (phone: string) => {
+  if (!phone) return '';
+  // Remove +254 or 254 from the beginning
+  let cleaned = phone.replace(/^\+?254/, '');
+  // Also remove leading 0
+  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+  return cleaned;
+};
 
 // Inner component for card payment form
 const CardPaymentForm = ({ bookingId, clientSecret, onSuccess, onError }: any) => {
@@ -66,16 +80,21 @@ export default function BookingForm() {
 
   // Form state
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card'>('mpesa');
-  const [phone, setPhone] = useState(user?.phone || '');
+  // Remove country code from user's phone for display
+  const [phone, setPhone] = useState(() => stripPhonePrefix(user?.phone || ''));
   const [occupants, setOccupants] = useState('1 Person');
   const [notes, setNotes] = useState('');
   const [moveInDate, setMoveInDate] = useState(location.state?.startDate || '');
-  const [loading, setLoading] = useState(false);
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
   const [stripeBookingId, setStripeBookingId] = useState<number | null>(null);
 
   if (isLoading) return <LoadingSpinner />;
   if (!house) return <div>Property not found</div>;
+
+  const bookingFee = house.bookingFee ? Number(house.bookingFee) : 0;
+  const canProceed = bookingFee > 0;
+  const [createMpesaPush, { isLoading: mpesaLoading }] = useCreateMpesaPushMutation();
+  const [createStripeIntent, { isLoading: stripeLoading }] = useCreateStripeIntentMutation();
 
   // M-Pesa payment initiation
   const handleMpesaPay = async () => {
@@ -83,80 +102,66 @@ export default function BookingForm() {
       alert('Please enter your M-Pesa phone number');
       return;
     }
-    setLoading(true);
+    if (!canProceed) {
+      alert('Booking fee not set. Please contact the landlord.');
+      return;
+    }
     try {
-      const res = await fetch('/api/payments/mpesa/stkpush', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          houseId,
-          moveInDate,
-          occupants,
-          notes,
-          phone,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert('STK Push sent! Check your phone and enter PIN.');
-        navigate(`/payment_status?checkoutId=${data.checkoutRequestId}`); // ✅ changed to underscore
+      const resp = await createMpesaPush({
+        houseId,
+        moveInDate,
+        occupants,
+        notes,
+        phone,
+      }).unwrap();
+      
+      const data = resp.data || resp;
+      if (data.checkoutRequestId) {
+        navigate(`/payment_status?checkoutId=${data.checkoutRequestId}`);
       } else {
-        alert('Payment initiation failed: ' + data.error);
+        alert('Payment initiation failed: ' + (data.error || 'Unknown error'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Network error. Please try again.');
-    } finally {
-      setLoading(false);
+      alert(err?.data?.error || err?.data?.message || 'Network error. Please try again.');
     }
   };
 
   // Card payment: create Stripe PaymentIntent
   const handleCardPay = async () => {
-    setLoading(true);
+    if (!canProceed) {
+      alert('Booking fee not set. Please contact the landlord.');
+      return;
+    }
     try {
-      const res = await fetch('/api/payments/card/create-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          houseId,
-          moveInDate,
-          occupants,
-          notes,
-          amount: 2500,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const resp = await createStripeIntent({
+        houseId,
+        moveInDate,
+        occupants,
+        notes,
+      }).unwrap();
+      
+      const data = resp.data || resp;
+      if (data.clientSecret) {
         setStripeClientSecret(data.clientSecret);
         setStripeBookingId(data.bookingId);
       } else {
-        alert('Failed to initialize card payment: ' + data.error);
+        alert('Payment intent creation failed: ' + (data.error || 'Unknown error'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Network error');
-    } finally {
-      setLoading(false);
+      alert(err?.data?.error || err?.data?.message || 'Network error. Please try again.');
     }
   };
 
-
-  const onCardSuccess = (bookingId: number, transactionId: string) => {
-    navigate(`/payment_status?bookingId=${bookingId}&txn=${transactionId}`);
+  const onCardSuccess = () => {
+    navigate('/payment_status?bookingId=' + stripeBookingId);
   };
   const onCardError = (msg: string) => {
     alert('Payment failed: ' + msg);
     setStripeClientSecret(null);
   };
 
-  // Don't render Stripe if key is missing
   const showStripe = stripePublicKey && stripePromise;
 
   return (
@@ -180,7 +185,7 @@ export default function BookingForm() {
 
       <section className="px-8 md:px-16 pb-24 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
         <div className="lg:col-span-7 space-y-12">
-          {/* Booking Details (unchanged) */}
+          {/* Booking Details */}
           <div className="space-y-8">
             <div className="flex items-center gap-4">
               <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">01</span>
@@ -231,7 +236,9 @@ export default function BookingForm() {
             <div className="bg-secondary-container/10 p-6 rounded-2xl border-l-4 border-secondary space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-bold text-secondary text-lg">Booking Fee: KSh 2,500</h3>
+                  <h3 className="font-bold text-secondary text-lg">
+                    Booking Fee: {bookingFee > 0 ? formatCurrency(bookingFee) : 'Not set by landlord'}
+                  </h3>
                   <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
                     This one-time fee filters out automated bots and verifies serious intent. The amount is fully deductible from your first month's rent.
                   </p>
@@ -244,16 +251,16 @@ export default function BookingForm() {
             <div className="flex gap-4">
               <button
                 onClick={() => setPaymentMethod('mpesa')}
-                className={`flex-1 py-3 rounded-xl font-bold ${paymentMethod === 'mpesa' ? 'bg-primary text-white' : 'bg-surface-container-high'}`}
+                className={`flex-1 py-3 rounded-xl font-bold transition-all ${paymentMethod === 'mpesa' ? 'bg-primary text-white shadow-md scale-[1.02]' : 'bg-surface-container-high text-on-surface-variant'}`}
               >
                 M-Pesa
               </button>
               <button
                 onClick={() => setPaymentMethod('card')}
-                className={`flex-1 py-3 rounded-xl font-bold ${paymentMethod === 'card' ? 'bg-primary text-white' : 'bg-surface-container-high'}`}
+                className={`flex-1 py-3 rounded-xl font-bold transition-all ${paymentMethod === 'card' ? 'bg-primary text-white shadow-md scale-[1.02]' : 'bg-surface-container-high text-on-surface-variant'}`}
                 disabled={!showStripe}
               >
-                Card (Visa/Mastercard) {!showStripe && '(Key missing)'}
+                Card (Visa/MC) {!showStripe && '(N/A)'}
               </button>
             </div>
 
@@ -277,11 +284,11 @@ export default function BookingForm() {
                 </div>
                 <button
                   onClick={handleMpesaPay}
-                  disabled={loading}
+                  disabled={isLoading || mpesaLoading || !canProceed}
                   className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-bold text-lg shadow-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  {loading ? 'Processing...' : 'Pay via M-Pesa'}
-                  <span className="material-symbols-outlined">payments</span>
+                  {mpesaLoading ? 'Initiating Push...' : 'Confirm with M-Pesa'}
+                  {!mpesaLoading && <span className="material-symbols-outlined">payments</span>}
                 </button>
               </div>
             )}
@@ -290,10 +297,10 @@ export default function BookingForm() {
             {paymentMethod === 'card' && !stripeClientSecret && (
               <button
                 onClick={handleCardPay}
-                disabled={loading || !showStripe}
+                disabled={isLoading || stripeLoading || !showStripe || !canProceed}
                 className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-bold text-lg shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-50"
               >
-                {loading ? 'Initializing...' : 'Pay with Card'}
+                {stripeLoading ? 'Preparing Payment...' : 'Pay with Card'}
               </button>
             )}
             {paymentMethod === 'card' && stripeClientSecret && showStripe && (
@@ -308,7 +315,7 @@ export default function BookingForm() {
             )}
           </div>
 
-          {/* Trust Section (unchanged) */}
+          {/* Trust Section */}
           <div className="pt-8 border-t border-surface-variant flex flex-col md:flex-row gap-6 items-center">
             <div className="flex -space-x-2">
               <img className="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80" alt="Trust" />
@@ -324,7 +331,7 @@ export default function BookingForm() {
           </div>
         </div>
 
-        {/* Right Column: Context Sidebar (unchanged) */}
+        {/* Right Column: Context Sidebar */}
         <div className="lg:col-span-5">
           <div className="sticky top-24 space-y-6">
             <div className="bg-white rounded-[2rem] overflow-hidden shadow-2xl shadow-on-surface/5 border border-slate-100">

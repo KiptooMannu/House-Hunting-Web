@@ -4,7 +4,7 @@ export default function TermsPrivacy() {
   return (
     <div className="bg-surface text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen flex flex-col">
       <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md shadow-sm flex justify-between items-center px-8 py-4">
-        <div className="text-2xl font-bold tracking-tighter text-sky-900">Savanna Horizon</div>
+        <div className="text-2xl font-bold tracking-tighter text-sky-900">NestFind Kenya</div>
         <Link 
           className="text-sky-900 text-sm font-semibold font-headline flex items-center gap-2 hover:bg-slate-100/50 transition-colors px-4 py-2 rounded-full" 
           to="/"
@@ -57,7 +57,7 @@ export default function TermsPrivacy() {
               Terms of Service & <br/><span className="text-sky-400">Privacy Protocols.</span>
             </h1>
             <p className="text-xl text-on-surface-variant max-w-2xl font-body leading-relaxed">
-              Savanna Horizon is committed to the highest standards of transparency and digital integrity. This document outlines your rights and our obligations in the Kenyan real estate ecosystem.
+              NestFind Kenya is committed to the highest standards of transparency and digital integrity. This document outlines your rights and our obligations in the Kenyan real estate ecosystem.
             </p>
           </section>
 
@@ -69,7 +69,7 @@ export default function TermsPrivacy() {
             </div>
             <div className="grid lg:grid-cols-12 gap-8">
               <div className="lg:col-span-8 text-lg text-on-surface-variant font-body leading-[1.8] space-y-6">
-                <p>Welcome to Savanna Horizon. By accessing our platform, you agree to be bound by these Terms of Service. Our services are specifically tailored for the Kenyan market, integrating modern financial tools and government portals to streamline property management.</p>
+                <p>Welcome to NestFind Kenya. By accessing our platform, you agree to be bound by these Terms of Service. Our services are specifically tailored for the Kenyan market, integrating modern financial tools and government portals to streamline property management.</p>
                 <p>These terms govern your use of our website, mobile application, and concierge services. Please read them carefully, as they include important information regarding your legal rights and remedies.</p>
               </div>
             </div>
@@ -105,7 +105,7 @@ export default function TermsPrivacy() {
                     <span className="material-symbols-outlined text-white text-2xl">hub</span>
                   </div>
                   <h3 className="text-xl font-bold mb-4">GavaConnect Synchronization</h3>
-                  <p className="text-sky-100/80 leading-relaxed text-sm">Your data may be synchronized with national registries for property verification. This ensures that every listing on Savanna Horizon is legally sound and title-deed verified.</p>
+                  <p className="text-sky-100/80 leading-relaxed text-sm">Your data may be synchronized with national registries for property verification. This ensures that every listing on NestFind Kenya is legally sound and title-deed verified.</p>
                 </div>
                 <div className="mt-8">
                   <span className="text-xs font-bold bg-sky-400/20 px-3 py-1 rounded-full text-sky-200 uppercase tracking-wider">Real-time Verification</span>
@@ -124,7 +124,7 @@ export default function TermsPrivacy() {
               <div className="p-8 lg:p-12">
                 <div className="max-w-2xl space-y-6">
                   <h4 className="text-xl font-bold text-primary">Mandatory PIN Submission</h4>
-                  <p className="text-on-surface-variant leading-relaxed">In accordance with the Finance Act, all landlords and commercial entities must provide a valid KRA PIN. Savanna Horizon acts as a reporting entity for rental income tax purposes where applicable by law.</p>
+                  <p className="text-on-surface-variant leading-relaxed">In accordance with the Finance Act, all landlords and commercial entities must provide a valid KRA PIN. NestFind Kenya acts as a reporting entity for rental income tax purposes where applicable by law.</p>
                   <ul className="space-y-4">
                     <li className="flex items-start gap-3">
                       <span className="material-symbols-outlined text-secondary mt-1">check_circle</span>
@@ -160,7 +160,7 @@ export default function TermsPrivacy() {
               <h2 className="text-3xl font-bold text-primary tracking-tight">User Responsibilities</h2>
             </div>
             <div className="space-y-6 text-on-surface-variant leading-relaxed max-w-3xl">
-              <p>As a user of the Savanna Horizon platform, you are solely responsible for the accuracy of the information provided in your profile. Misrepresentation of property ownership or tenant status is grounds for immediate permanent suspension.</p>
+              <p>As a user of the NestFind Kenya platform, you are solely responsible for the accuracy of the information provided in your profile. Misrepresentation of property ownership or tenant status is grounds for immediate permanent suspension.</p>
               <div className="grid sm:grid-cols-2 gap-8 mt-8">
                 <div className="space-y-2">
                   <p className="font-headline font-bold text-primary">Account Security</p>
@@ -220,7 +220,7 @@ export default function TermsPrivacy() {
           <Link className="text-slate-500 text-xs font-inter leading-relaxed hover:text-sky-600 transition-colors" to="/compliance">Tax Compliance Guide</Link>
         </div>
         <p className="text-slate-500 text-xs font-inter leading-relaxed text-center opacity-80">
-          © 2024 Savanna Horizon. Integrated with GavaConnect & M-Pesa.
+          © 2024 NestFind Kenya. Integrated with GavaConnect & M-Pesa.
         </p>
       </footer>
     </div>

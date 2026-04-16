@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Badge } from '@/components/ui/badge';
-import type { RootState } from '../store';
-import { useGetHouseByIdQuery, useUpdateHouseMutation, useDeleteHouseMutation } from '../store/apiSlice';
-import { formatCurrency, getHouseImage } from '../utils/helpers';
-import LoadingSpinner from '../components/LoadingSpinner';
+import type { RootState } from '../../store';
+import { useGetHouseByIdQuery, useUpdateHouseMutation, useDeleteHouseMutation } from '../../store/apiSlice';
+import { formatCurrency, getHouseImage } from '../../utils/helpers';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 import {
   Dialog,
@@ -29,7 +29,7 @@ export default function HouseDetail() {
 
   const { data: houseData, isLoading: loading, error: fetchError } = useGetHouseByIdQuery(houseId, { skip: !houseId });
   const { user } = useSelector((state: RootState) => state.auth);
-  
+
   const [_updateHouse] = useUpdateHouseMutation();
   const [deleteHouse, { isLoading: isDeleting }] = useDeleteHouseMutation();
 
@@ -53,7 +53,7 @@ export default function HouseDetail() {
   }, [bookingDate, checkoutDate]);
 
   if (loading) return <LoadingSpinner text="Consulting the Curator..." />;
-  
+
   if (fetchError) return <div className="min-h-screen p-16 mt-16 text-center text-error font-bold font-headline">Failed to load property details.</div>;
   if (!house) return <div className="min-h-screen p-16 mt-16 text-center text-on-surface-variant font-bold font-headline">Property not found.</div>;
 
@@ -62,17 +62,18 @@ export default function HouseDetail() {
 
   const handleProceedToBooking = () => {
     if (!user) {
-        navigate('/login');
-        return;
+      navigate('/login');
+      return;
     }
-    navigate(`/book/${house.houseId}`, { 
-      state: { 
-        startDate: bookingDate, 
-        endDate: checkoutDate, 
-        totalPrice, 
-        stayDuration, 
-        dailyRate 
-      } 
+    navigate(`/book/${house.houseId}`, {
+      state: {
+        startDate: bookingDate,
+        endDate: checkoutDate,
+        totalPrice,
+        stayDuration,
+        dailyRate,
+        bookingFee: house.bookingFee
+      }
     });
   };
 
@@ -88,34 +89,34 @@ export default function HouseDetail() {
 
   return (
     <main className="bg-surface text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed antialiased pt-20">
-      {/* Editorial Hero Section */}
+      {/* Editorial Hero Section (unchanged) */}
       <section className="max-w-screen-2xl mx-auto px-4 md:px-8 mt-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 h-auto md:h-[716px]">
           {/* Main Hero Snap */}
           <div className="md:col-span-8 relative overflow-hidden rounded-2xl md:rounded-3xl group border border-slate-200 shadow-sm aspect-video md:aspect-auto">
-            <img 
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
-              src={getHouseImage(house.images?.[0], "https://images.unsplash.com/photo-1600585154340-be6161a56a0c")} 
+            <img
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+              src={getHouseImage(house.images?.[0], "https://images.unsplash.com/photo-1600585154340-be6161a56a0c")}
               alt={house.title}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 text-left">
               {isOwner && (
                 <div className="absolute top-8 right-8 flex gap-4 z-20">
-                   <button 
+                  <button
                     onClick={() => navigate('/landlord/create-listing', { state: { edit: true, house } })}
                     className="bg-white/90 backdrop-blur px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 hover:bg-white transition-all shadow-xl"
-                   >
-                     <span className="material-symbols-outlined text-sm">edit</span>
-                     Edit Listing
-                   </button>
-                   <button 
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    Edit Listing
+                  </button>
+                  <button
                     onClick={handleDelete}
                     disabled={isDeleting}
                     className="bg-error/90 backdrop-blur px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2 hover:bg-error transition-all shadow-xl"
-                   >
-                     <span className="material-symbols-outlined text-sm">delete</span>
-                     {isDeleting ? 'Deleting...' : 'Delete'}
-                   </button>
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
                 </div>
               )}
               <div className="mb-4">
@@ -132,16 +133,16 @@ export default function HouseDetail() {
           {/* Secondary Snaps */}
           <div className="md:col-span-4 flex flex-col sm:flex-row md:flex-col gap-4">
             <div className="flex-1 rounded-2xl md:rounded-3xl overflow-hidden group border border-slate-200 relative aspect-video md:aspect-auto">
-              <img 
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                src={getHouseImage(house.images?.[1] || house.images?.[0])} 
+              <img
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                src={getHouseImage(house.images?.[1] || house.images?.[0])}
                 alt="Detail 1"
               />
             </div>
             <div className="flex-1 rounded-2xl md:rounded-3xl overflow-hidden relative group border border-slate-200 aspect-video md:aspect-auto">
-              <img 
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                src={getHouseImage(house.images?.[2] || house.images?.[0])} 
+              <img
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                src={getHouseImage(house.images?.[2] || house.images?.[0])}
                 alt="Detail 2"
               />
               <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
@@ -157,15 +158,15 @@ export default function HouseDetail() {
                       <span className="material-symbols-outlined text-3xl">luxury_residences</span>
                       The Complete Gallery
                     </DialogTitle>
-                    <p className="text-on-surface-variant font-bold text-xs uppercase tracking-[0.3em] opacity-60">Curated by Savanna Horizon Premium</p>
+                    <p className="text-on-surface-variant font-bold text-xs uppercase tracking-[0.3em] opacity-60">Curated by NestFind Kenya Premium</p>
                   </DialogHeader>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {house.images?.map((img: any, idx: number) => (
                       <div key={idx} className="group relative aspect-square rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all h-full">
-                        <img 
-                          src={getHouseImage(img)} 
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                          alt={img.caption || `House snapshot ${idx + 1}`} 
+                        <img
+                          src={getHouseImage(img)}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          alt={img.caption || `House snapshot ${idx + 1}`}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
                           <p className="text-white text-xs font-black uppercase tracking-widest">{img.caption || `Perspective ${idx + 1}`}</p>
@@ -182,8 +183,8 @@ export default function HouseDetail() {
 
       {/* Main Content & Sidebar */}
       <section className="max-w-screen-2xl mx-auto px-8 mt-16 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-16 text-left">
-        
-        {/* Left Column: Content */}
+
+        {/* Left Column: Content (unchanged) */}
         <div className="col-span-1 lg:col-span-8 text-left">
           {/* Key Stats Bar */}
           <div className="bg-surface-container-low p-10 rounded-[2.5rem] flex flex-wrap justify-between items-center mb-16 shadow-inner border border-slate-100">
@@ -217,7 +218,7 @@ export default function HouseDetail() {
 
           {/* Description */}
           <div className="space-y-8 mb-20 text-left">
-            <h2 className="text-4xl font-black tracking-tight text-primary font-headline leading-tight">Modern Architecture & <br/>Premium Finishes.</h2>
+            <h2 className="text-4xl font-black tracking-tight text-primary font-headline leading-tight">Modern Architecture & <br />Premium Finishes.</h2>
             <div className="prose prose-slate max-w-none text-on-surface-variant text-lg leading-relaxed font-body text-left">
               <p className="border-l-4 border-primary/20 pl-8 text-xl font-medium text-primary/80">
                 {house.description || 'This masterclass in contemporary urban design redefines luxury through its dramatic use of dark textures and natural light.'}
@@ -254,9 +255,9 @@ export default function HouseDetail() {
           <div className="mb-20 text-left">
             <h3 className="text-[11px] font-black mb-10 uppercase tracking-[0.3em] text-on-surface-variant opacity-60">Neighborhood Insights: {house.location?.county || 'Riverside'}</h3>
             <div className="rounded-[3rem] overflow-hidden h-[500px] relative group shadow-2xl border-8 border-white ring-1 ring-slate-200 text-left">
-              <img 
-                className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-1000" 
-                src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80" 
+              <img
+                className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-1000"
+                src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80"
                 alt="Map Visualization"
               />
               <div className="absolute top-8 left-8 bg-white/95 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-2xl max-w-xs border border-slate-100 text-left">
@@ -286,8 +287,8 @@ export default function HouseDetail() {
               <div className="space-y-3 text-left">
                 <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-in Period</label>
                 <div className="relative group text-left">
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none"
                     value={bookingDate}
                     onChange={(e) => setBookingDate(e.target.value)}
@@ -299,8 +300,8 @@ export default function HouseDetail() {
               <div className="space-y-3 text-left">
                 <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-out Period</label>
                 <div className="relative group text-left">
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none"
                     value={checkoutDate}
                     onChange={(e) => setCheckoutDate(e.target.value)}
@@ -322,15 +323,26 @@ export default function HouseDetail() {
               </div>
             </div>
 
-            <button 
+            {/* ✅ New Booking Fee Display */}
+            <div className="bg-slate-50 p-8 rounded-[2rem] mb-10 space-y-5 shadow-inner border border-slate-100/50 text-left">
+              <div className="flex justify-between text-[11px] font-black uppercase tracking-widest opacity-60">
+                <span>Booking Fee (one‑time)</span>
+                <span className="text-primary">{formatCurrency(house.bookingFee || 0)}</span>
+              </div>
+              <p className="text-[10px] text-on-surface-variant leading-tight">
+                This fee is fully deductible from your first month's rent.
+              </p>
+            </div>
+
+            <button
               onClick={handleProceedToBooking}
               className="w-full bg-gradient-to-br from-primary via-primary to-primary-container text-white py-10 rounded-full font-black text-xl shadow-2xl shadow-primary/20 transition-all transform hover:scale-[1.03] active:scale-[0.98] mb-10 flex flex-col items-center justify-center gap-1 border-none relative overflow-hidden group"
             >
-               <div className="flex items-center gap-4 relative z-10">
-                 <span>Initiate Booking</span>
-                 <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">send_to_mobile</span>
-               </div>
-               <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">Verified Protocol</span>
+              <div className="flex items-center gap-4 relative z-10">
+                <span>Initiate Booking</span>
+                <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">send_to_mobile</span>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">Verified Protocol</span>
             </button>
 
             <div className="space-y-6 border-t border-slate-100 pt-10 text-left">
