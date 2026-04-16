@@ -15,8 +15,10 @@ import {
   index,
   unique,
   uniqueIndex,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { type InferSelectModel, type InferInsertModel, relations, sql } from 'drizzle-orm';
+import { z } from 'zod';
 
 // ─────────────────────────────────────────────
 // ENUMS
@@ -80,6 +82,13 @@ export const complianceStatusEnum = pgEnum('compliance_status', [
   'offline_sync_pending',
   'acknowledged',
   'rejected',
+]);
+
+export const jobStatusEnum = pgEnum('job_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
 ]);
 export const auditActionEnum = pgEnum('audit_action', [
   'login',
@@ -462,7 +471,56 @@ export type TSBookings = InferSelectModel<typeof bookings>;
 export type TIBookings = InferInsertModel<typeof bookings>;
 export type TSPayments = InferSelectModel<typeof payments>;
 export type TIPayments = InferInsertModel<typeof payments>;
+// ─────────────────────────────────────────────
+// JOBS QUEUE (PERSISTENCE & RETRIES)
+// ─────────────────────────────────────────────
+
+export const jobs = pgTable('jobs', {
+  jobId: serial('job_id').primaryKey(),
+  type: varchar('type', { length: 100 }).notNull(), // e.g., 'kra_etims_sync'
+  payload: jsonb('payload').notNull(),
+  status: jobStatusEnum('status').default('pending').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  maxAttempts: integer('max_attempts').default(5).notNull(),
+  nextRunAt: timestamp('next_run_at').defaultNow(),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export type TSComplianceLogs = InferSelectModel<typeof complianceLogs>;
 export type TIComplianceLogs = InferInsertModel<typeof complianceLogs>;
 export type TSAuditLogs = InferSelectModel<typeof auditLogs>;
 export type TIAuditLogs = InferInsertModel<typeof auditLogs>;
+
+// ─────────────────────────────────────────────
+// COMPLIANCE ZOD SCHEMAS & TYPES
+// ─────────────────────────────────────────────
+
+export const RevenueReportSchema = z.object({
+  periodStart: z.string().datetime().optional(),
+  periodEnd: z.string().datetime().optional(),
+  totalRevenueKes: z.number().nonnegative(),
+  totalBookingFees: z.number().nonnegative(),
+  bookingId: z.number().int().positive().optional(),
+  initiatedById: z.number().int().positive().optional(),
+});
+
+export type RevenueReportPayload = z.infer<typeof RevenueReportSchema>;
+
+export const TCCValidationSchema = z.object({
+  kraPIN: z.string().length(11, 'KRA PIN must be 11 characters'),
+  tccNumber: z.string().min(5),
+});
+
+export type TCCValidationPayload = z.infer<typeof TCCValidationSchema>;
+
+export interface KRAResponse {
+  transactionId?: string;
+  status: string;
+  message?: string;
+  taxBreakdown?: {
+    mriTax: number;
+    vatTax: number;
+  };
+}

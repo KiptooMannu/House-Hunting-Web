@@ -201,4 +201,3 @@ export const listUniqueLocations = async () => {
     ))
     .orderBy(asc(locations.county), asc(locations.town));
 };
-};

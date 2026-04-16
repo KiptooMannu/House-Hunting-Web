@@ -1,18 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { complianceApi } from '../../api/compliance';
 
 export default function ComplianceModule() {
   const navigate = useNavigate();
   const [isFiling, setIsFiling] = useState(false);
   const [filed, setFiled] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleNilFiling = () => {
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const data = await complianceApi.listLogs();
+      setLogs(data);
+    } catch (err: any) {
+      console.error('Failed to fetch compliance logs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNilFiling = async () => {
     setIsFiling(true);
-    setTimeout(() => {
-      setIsFiling(false);
+    try {
+      await complianceApi.submitNilFiling({
+        periodStart: new Date().toISOString(),
+        periodEnd: new Date().toISOString()
+      });
       setFiled(true);
+      fetchLogs();
       setTimeout(() => setFiled(false), 5000);
-    }, 2000);
+    } catch (err: any) {
+      console.error('Filing failed:', err);
+    } finally {
+      setIsFiling(false);
+    }
   };
 
   return (
@@ -123,27 +149,41 @@ export default function ComplianceModule() {
             </div>
           </div>
           <div className="space-y-2">
-            {[
-              { title: 'Rent: Unit 4B - Sapphire Heights', ref: 'QXJ9273K · Today, 10:45 AM', amount: 'KES 85,000', badge: 'MRI Eligible', icon: 'phone_iphone' },
-              { title: 'Service Charge: Unit 12A', ref: 'PLZ00122 · Yesterday', amount: 'KES 12,500', badge: 'Non-Taxable', icon: 'account_balance' },
-              { title: 'Rent: Unit 2C - Sapphire Heights', ref: 'QXJ9288L · Nov 12, 2023', amount: 'KES 75,000', badge: 'MRI Eligible', icon: 'phone_iphone' }
-            ].map((item, i) => (
+            {loading ? (
+              <div className="py-20 text-center text-slate-400 font-bold animate-pulse italic">
+                Synchronizing Ledger with KRA Nodes...
+              </div>
+            ) : logs.length === 0 ? (
+              <div className="py-20 text-center text-slate-400 font-bold italic">
+                No compliance entries detected for this period.
+              </div>
+            ) : logs.map((log, i) => (
               <div key={i} className="group flex flex-wrap items-center justify-between p-5 rounded-2xl hover:bg-surface-container-low transition-all border border-transparent hover:border-outline-variant/10 cursor-pointer">
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${item.badge === 'Non-Taxable' ? 'bg-slate-100 text-slate-500' : 'bg-secondary-container text-on-secondary-container'}`}>
-                    <span className="material-symbols-outlined">{item.icon}</span>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${log.status === 'offline_sync_pending' ? 'bg-amber-50 text-amber-600' : 'bg-secondary-container text-on-secondary-container'}`}>
+                    <span className="material-symbols-outlined">
+                      {log.action === 'nil_filing' ? 'zero_reporting' : 'payments'}
+                    </span>
                   </div>
                   <div className="text-left">
-                    <p className="font-headline font-bold text-primary italic tracking-tight">{item.title}</p>
-                    <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-50">{item.ref}</p>
+                    <p className="font-headline font-bold text-primary italic tracking-tight">
+                      {log.action === 'revenue_report' ? `eTIMS Receipt: ${log.gavaConnectRequestId.substring(0, 12)}...` : 'NIL Filing Submission'}
+                    </p>
+                    <p className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest mt-1 opacity-50">
+                      {new Date(log.createdAt).toLocaleString()} · ID: {log.logId}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-8 mt-4 sm:mt-0">
                   <div className="text-right">
-                    <p className="font-headline font-black text-primary text-lg">{item.amount}</p>
-                    <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full mt-1 ${item.badge === 'Non-Taxable' ? 'bg-slate-200 text-slate-600' : 'bg-secondary/10 text-secondary'}`}>
-                      {item.badge === 'MRI Eligible' && <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>sell</span>}
-                      {item.badge}
+                    <p className="font-headline font-black text-primary text-lg">
+                      {Number(log.totalRevenueKes) > 0 ? `KES ${Number(log.totalRevenueKes).toLocaleString()}` : 'NIL'}
+                    </p>
+                    <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full mt-1 
+                      ${log.status === 'submitted_sandbox' ? 'bg-emerald-100 text-emerald-700' : 
+                        log.status === 'offline_sync_pending' ? 'bg-amber-100 text-amber-700' : 
+                        'bg-slate-200 text-slate-600'}`}>
+                      {log.status.replace('_', ' ')}
                     </span>
                   </div>
                   <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>

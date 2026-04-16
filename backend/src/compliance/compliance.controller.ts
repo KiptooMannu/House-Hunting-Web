@@ -55,8 +55,8 @@ export const updateLog = async (c: Context) => {
 export const deleteLog = async (c: Context) => {
   try {
     const { logId } = complianceIdParam.parse(c.req.param());
-    const deleted = await complianceService.deleteLog(logId);
-    if (!deleted) return c.json({ error: 'Log not found' }, 404);
+    const result = await complianceService.deleteLog(logId);
+    if (!result) return c.json({ error: 'Log not found' }, 404);
     return c.json({ message: 'Log deleted' }, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

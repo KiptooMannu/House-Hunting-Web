@@ -1,22 +1,21 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/db.js';
-import { bookings, houses, locations } from '../db/schema.js';
+import { bookings, houses } from '../db/schema.js';
+import { calculateBookingFees } from '../utils/pricing.js';
 
 export const createBooking = async (data: any) => {
-  // ... (keep logic same)
   const houseQuery = await db.query.houses.findFirst({
     where: eq(houses.houseId, data.houseId),
   });
 
   if (!houseQuery) throw new Error('House not found');
 
-  const calculatedFee = Math.max(Number(houseQuery.monthlyRent) * 0.05, 1500);
-  const basePrice = houseQuery.monthlyRent;
+  const { basePrice, platformFee } = calculateBookingFees(Number(houseQuery.monthlyRent));
 
   const finalData = {
     ...data,
-    totalPrice: basePrice,
-    bookingFee: calculatedFee,
+    totalPrice: basePrice.toString(),
+    bookingFee: platformFee.toString(),
   };
 
   const [newBooking] = await db.insert(bookings).values(finalData).returning();

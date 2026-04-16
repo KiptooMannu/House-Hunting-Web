@@ -12,13 +12,24 @@ import { paymentsRouter } from './payments/payments.router.js';
 import { complianceLogsRouter } from './compliance/compliance.router.js';
 import { auditLogsRouter } from './audit_logs/audit_logs.router.js';
 import { analyticsRouter } from './analytics/analytics.router.js';
+import { cors } from 'hono/cors';
+import { runWorker } from './utils/jobs.service.js';
 
 const app = new Hono();
+
+// Start Background Worker
+runWorker();
+
+// Enable CORS for frontend integration
+app.use('/api/*', cors({
+  origin: '*', // In production, restrict to your frontend domain
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// Mount all routers
 // Mount all routers under /api prefix for consistency
 app.route('/api/auth', authRouter);
 app.route('/api/users', usersRouter);
@@ -28,7 +39,7 @@ app.route('/api/house-images', houseImagesRouter);
 app.route('/api/chatbot', chatbotSessionsRouter);
 app.route('/api/bookings', bookingsRouter);
 app.route('/api/payments', paymentsRouter);
-app.route('/api/compliance-logs', complianceLogsRouter);
+app.route('/api/compliance', complianceLogsRouter);
 app.route('/api/audit-logs', auditLogsRouter);
 app.route('/api/analytics', analyticsRouter);
 

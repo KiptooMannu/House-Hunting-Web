@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/db.js';
-import { bookings, payments, houses } from '../db/schema.js';
+import { bookings, payments, houses, jobs } from '../db/schema.js';
 import { initiateSTKPush, parseCallback } from './mpesa.service.js';
 import Stripe from 'stripe';
 
@@ -72,6 +72,9 @@ export async function createPendingBookingAndInitiateMpesa({
   }
 }
 
+import logger from '../utils/logger.js';
+import { generateETIMSReceipt } from '../compliance/compliance.service.js';
+
 export async function handleMpesaCallback(rawBody: any) {
   const callbackData = parseCallback(rawBody);
   const { checkoutRequestId, resultCode, resultDesc, amount, mpesaReceiptNumber, transactionDate } = callbackData;
@@ -82,22 +85,22 @@ export async function handleMpesaCallback(rawBody: any) {
     .limit(1);
 
   if (!existingBooking) {
-    console.error(`No pending booking for checkoutRequestId: ${checkoutRequestId}`);
+    logger.error('M-Pesa callback for unknown booking', { checkoutRequestId });
     return { success: false, message: 'Booking not found' };
   }
 
   if (resultCode === 0) {
+    logger.info('M-Pesa payment success. Processing audit trail.', { bookingId: existingBooking.bookingId });
+    
     await db.transaction(async (trx) => {
       await trx.update(bookings)
         .set({ status: 'confirmed', confirmedAt: new Date() })
         .where(eq(bookings.bookingId, existingBooking.bookingId));
 
-      // Use the stored booking fee from the booking (not the callback amount)
-      const feeAmount = existingBooking.bookingFee;
       await trx.insert(payments).values({
         bookingId: existingBooking.bookingId,
         payerId: existingBooking.seekerId,
-        amount: feeAmount,
+        amount: existingBooking.bookingFee,
         method: 'mpesa',
         status: 'completed',
         mpesaReceiptNumber,
@@ -105,20 +108,28 @@ export async function handleMpesaCallback(rawBody: any) {
         mpesaCheckoutRequestId: checkoutRequestId,
         paidAt: new Date(),
       });
+
+      // Transactional Outbox: Enqueue compliance job WITHIN the transaction
+      // This ensures if the payment is saved, the job MUST eventually run.
+      const payload = {
+        bookingId: existingBooking.bookingId,
+        totalRevenueKes: Number(existingBooking.bookingFee),
+        totalBookingFees: 1500, // Matched with pricing engine
+        initiatedById: existingBooking.seekerId,
+      };
+
+      await trx.insert(jobs).values({
+        type: 'kra_etims_sync',
+        payload: payload,
+        status: 'pending',
+      });
     });
 
-    // Trigger compliance auto-log (eTIMS)
-    try {
-      const { generateETIMSReceipt } = await import('../compliance/compliance.service.js');
-      await generateETIMSReceipt(existingBooking.bookingId);
-    } catch (e) {
-      console.warn('[Payments] Compliance auto-log failed:', e);
-    }
-
+    logger.info('M-Pesa payment processed and eTIMS job enqueued', { bookingId: existingBooking.bookingId });
     return { success: true, bookingId: existingBooking.bookingId };
   } else {
+    logger.warn('M-Pesa payment rejected', { bookingId: existingBooking.bookingId, resultDesc });
     await db.delete(bookings).where(eq(bookings.bookingId, existingBooking.bookingId));
-    console.log(`Payment failed for booking ${existingBooking.bookingId}: ${resultDesc}`);
     return { success: false, message: resultDesc };
   }
 }
