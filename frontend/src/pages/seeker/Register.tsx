@@ -35,13 +35,15 @@ export default function Register() {
     }
 
     try {
-      // We only send the fields supported by the backend schema for now
+      // We send all fields gathered during registration
       const payload = {
         fullName: form.fullName,
         email: form.email,
         password: form.password,
         role: form.role,
-        phone: form.phone
+        phone: form.phone,
+        kraPin: form.role === 'landlord' ? form.kraPin : undefined,
+        agencyName: form.role === 'landlord' ? form.agencyName : undefined,
       };
       
       const res = await register(payload).unwrap();

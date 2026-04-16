@@ -17,11 +17,32 @@ const columnMap: Record<string, string> = {
 };
 
 export const createUser = async (data: any) => {
-  const tempPassword = generateTempPassword();
-  const passwordHash = await bcrypt.hash(tempPassword, 12);
-  const [newUser] = await db.insert(users).values(data).returning();
-  await db.insert(auth).values({ userId: newUser.userId, passwordHash, isTemporaryPassword: true });
-  return { user: newUser, temporaryPassword: tempPassword };
+  const { password, ...userData } = data;
+  
+  let passwordHash: string;
+  let isTemporary = false;
+  let tempPwd;
+
+  if (password) {
+    passwordHash = await bcrypt.hash(password, 12);
+  } else {
+    tempPwd = generateTempPassword();
+    passwordHash = await bcrypt.hash(tempPwd, 12);
+    isTemporary = true;
+  }
+
+  const [newUser] = await db.insert(users).values(userData).returning();
+  
+  await db.insert(auth).values({ 
+    userId: newUser.userId, 
+    passwordHash, 
+    isTemporaryPassword: isTemporary 
+  });
+
+  return { 
+    user: newUser, 
+    temporaryPassword: tempPwd 
+  };
 };
 
 export const getUser = async (userId: number) => {

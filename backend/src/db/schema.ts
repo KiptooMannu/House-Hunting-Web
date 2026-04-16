@@ -122,6 +122,8 @@ export const users = pgTable('users', {
   accountStatus: accountStatusEnum('account_status').notNull().default('pending_verification'),
   profileImage: varchar('profile_image', { length: 500 }),
   region: varchar('region', { length: 255 }),
+  kraPin: varchar('kra_pin', { length: 50 }),
+  agencyName: varchar('agency_name', { length: 255 }),
   lastLoginAt: timestamp('last_login_at'),
   totalBookings: integer('total_bookings').default(0),
   totalListings: integer('total_listings').default(0),

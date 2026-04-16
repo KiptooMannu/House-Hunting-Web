@@ -31,14 +31,24 @@ export const userSchema = z.object({
   fullName: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(10),
-  nationalId: z.string().optional(),
+  nationalId: z.string().optional().nullable(),
   role: UserRoleEnum.default('seeker'),
   accountStatus: AccountStatusEnum.default('pending_verification'),
   profileImage: z.string().url().optional().nullable(),
-  region: z.string().optional(),
+  region: z.string().optional().nullable(),
+  kraPin: z.string().optional().nullable(),
+  agencyName: z.string().optional().nullable(),
   lastLoginAt: z.date().optional().nullable(),
   totalBookings: z.number().int().min(0).default(0),
   totalListings: z.number().int().min(0).default(0),
+});
+
+export const createUserSchema = userSchema.extend({
+  password: z.string().min(8).optional(),
+}).omit({ 
+  totalBookings: true, 
+  totalListings: true, 
+  lastLoginAt: true 
 });
 
 export const authSchema = z.object({
@@ -197,7 +207,6 @@ export const idParamSchema = z.object({ id: z.string().transform((val: string) =
 // ============================================================
 // CREATE (omit auto-generated fields that actually exist)
 // ============================================================
-export const createUserSchema = userSchema.omit({ totalBookings: true, totalListings: true, lastLoginAt: true });
 export const createLocationSchema = locationSchema;
 export const createHouseSchema = houseSchema.omit({ viewCount: true, bookingCount: true, isVerified: true, verifiedAt: true, landlordId: true });
 export const createHouseImageSchema = houseImageSchema;
