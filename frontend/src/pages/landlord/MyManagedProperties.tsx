@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import {  } from 'react';
 import { useGetHousesQuery, useDeleteHouseMutation } from '../../store/apiSlice';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
@@ -8,20 +8,25 @@ import { useNavigate } from 'react-router-dom';
 export default function MyManagedProperties() {
   const { user } = useSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
-  const { data: housesData, isLoading } = useGetHousesQuery({ page: 1, limit: 100 });
+  
+  // 1. Fetch only MY managed assets
+  const { data: ownedData, isLoading: loadingOwned } = useGetHousesQuery({ 
+    landlordId: user?.userId,
+    limit: 50 
+  }, { skip: !user?.userId });
+
+  // 2. Fetch global market snapshot (excluding my own if needed, but here we just take a recent sample)
+  const { data: marketData, isLoading: loadingMarket } = useGetHousesQuery({ 
+    limit: 8,
+    status: 'active' 
+  });
+
   const [deleteHouse] = useDeleteHouseMutation();
 
-  const listings = housesData?.items ?? [];
+  const ownedListings = ownedData?.items ?? [];
+  const marketListings = marketData?.items ?? [];
   
-  const { ownedListings, marketListings } = useMemo(() => {
-    if (user?.role === 'landlord') {
-        return {
-            ownedListings: listings.filter((l: any) => l.landlordId === user.userId),
-            marketListings: listings.filter((l: any) => l.landlordId !== user.userId)
-        };
-    }
-    return { ownedListings: listings, marketListings: [] };
-  }, [listings, user]);
+  const isLoading = loadingOwned || loadingMarket;
 
   const handleDelete = async (houseId: number) => {
     if (window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) {

@@ -254,6 +254,7 @@ export const houseListQuery = paginationSchema.extend({
   status: ListingStatusEnum.optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
   locationId: z.string().optional().transform((v: string | undefined) => (v && v !== '') ? parseInt(v, 10) : undefined),
   county: z.string().optional(),
+  landlordId: z.string().optional().transform((v: string | undefined) => (v && v !== '') ? parseInt(v, 10) : undefined),
   search: z.string().optional(),
 });
 

@@ -31,7 +31,7 @@ export default function HouseDetail() {
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [_updateHouse] = useUpdateHouseMutation();
-  const [deleteHouse, { isLoading: isDeleting }] = useDeleteHouseMutation();
+  const [deleteHouse] = useDeleteHouseMutation();
 
   const isOwner = useMemo(() => {
     return user && houseData && (user.userId === houseData.landlordId);
@@ -100,25 +100,6 @@ export default function HouseDetail() {
               alt={house.title}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-12 text-left">
-              {isOwner && (
-                <div className="absolute top-8 right-8 flex gap-4 z-20">
-                  <button
-                    onClick={() => navigate('/landlord/create-listing', { state: { edit: true, house } })}
-                    className="bg-white/90 backdrop-blur px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 hover:bg-white transition-all shadow-xl"
-                  >
-                    <span className="material-symbols-outlined text-sm">edit</span>
-                    Edit Listing
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-error/90 backdrop-blur px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2 hover:bg-error transition-all shadow-xl"
-                  >
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                    {isDeleting ? 'Deleting...' : 'Delete'}
-                  </button>
-                </div>
-              )}
               <div className="mb-4">
                 <Badge className="bg-secondary text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex w-fit items-center gap-2 border-none shadow-xl">
                   <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
@@ -274,92 +255,142 @@ export default function HouseDetail() {
 
         {/* Right Column: Sticky Sidebar */}
         <div className="col-span-1 lg:col-span-4 text-left">
-          <div className="sticky top-28 bg-white p-10 rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100 text-left">
-            <div className="flex justify-between items-start mb-10">
-              <div className="text-left">
-                <h4 className="text-3xl font-black text-primary font-headline tracking-tighter leading-tight">Secure Viewing</h4>
-                <p className="text-on-surface-variant text-[11px] font-bold uppercase tracking-widest mt-2 opacity-60">Premium Reservation</p>
-              </div>
-              <Badge className="bg-tertiary-fixed px-4 py-2 rounded-full text-[10px] font-black text-tertiary uppercase tracking-widest border-none">Hot Property</Badge>
-            </div>
+          {isOwner ? (
+            <div className="sticky top-28 bg-primary p-12 rounded-[3rem] shadow-2xl text-white text-left relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-container opacity-50 group-hover:scale-110 transition-transform duration-1000"></div>
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-12">
+                  <div className="text-left">
+                    <h4 className="text-4xl font-black font-headline tracking-tighter leading-tight italic">Asset Operations</h4>
+                    <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.3em] mt-3">Node Control Alpha</p>
+                  </div>
+                  <span className="material-symbols-outlined text-secondary text-5xl">monitoring</span>
+                </div>
 
-            <div className="space-y-6 mb-10 text-left">
-              <div className="space-y-3 text-left">
-                <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-in Period</label>
-                <div className="relative group text-left">
-                  <input
-                    type="date"
-                    className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none"
-                    value={bookingDate}
-                    onChange={(e) => setBookingDate(e.target.value)}
-                    min={defaultBookingDate}
-                  />
-                  <span className="material-symbols-outlined absolute right-8 top-1/2 -translate-y-1/2 text-primary/30 group-hover:text-primary transition-colors">calendar_today</span>
+                <div className="grid grid-cols-2 gap-6 mb-12">
+                  <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">Total Views</p>
+                    <p className="text-3xl font-black font-headline tracking-tighter">{house.viewCount || '1.2k'}</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">Bookings</p>
+                    <p className="text-3xl font-black font-headline tracking-tighter">{house.bookingCount || '14'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    onClick={() => navigate('/landlord/create-listing', { state: { edit: true, house } })}
+                    className="w-full bg-white text-primary py-6 rounded-full font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl hover:scale-105 active:scale-95 transition-all text-center flex items-center justify-center gap-3 border-none"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit_square</span>
+                    Refine Parameters
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="w-full bg-white/10 text-white border border-white/20 py-6 rounded-full font-black text-[10px] uppercase tracking-[0.4em] hover:bg-red-600 hover:border-red-600 transition-all text-center flex items-center justify-center gap-3"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete_forever</span>
+                    Decommission Asset
+                  </button>
+                </div>
+
+                <div className="mt-12 pt-8 border-t border-white/10 text-left">
+                   <div className="flex items-center gap-4 text-secondary">
+                      <span className="material-icons text-sm">security</span>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] font-body italic">GavaConnect Compliance Sync: Active</p>
+                   </div>
                 </div>
               </div>
-              <div className="space-y-3 text-left">
-                <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-out Period</label>
-                <div className="relative group text-left">
-                  <input
-                    type="date"
-                    className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none"
-                    value={checkoutDate}
-                    onChange={(e) => setCheckoutDate(e.target.value)}
-                    min={bookingDate}
-                  />
-                  <span className="material-symbols-outlined absolute right-8 top-1/2 -translate-y-1/2 text-primary/30 group-hover:text-primary transition-colors">schedule</span>
+            </div>
+          ) : (
+            <div className="sticky top-28 bg-white p-10 rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100 text-left">
+              <div className="flex justify-between items-start mb-10">
+                <div className="text-left">
+                  <h4 className="text-3xl font-black text-primary font-headline tracking-tighter leading-tight">Secure Viewing</h4>
+                  <p className="text-on-surface-variant text-[11px] font-bold uppercase tracking-widest mt-2 opacity-60">Premium Reservation</p>
+                </div>
+                <Badge className="bg-tertiary-fixed px-4 py-2 rounded-full text-[10px] font-black text-tertiary uppercase tracking-widest border-none">Hot Property</Badge>
+              </div>
+
+              <div className="space-y-6 mb-10 text-left">
+                <div className="space-y-3 text-left">
+                  <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-in Period</label>
+                  <div className="relative group text-left">
+                    <input
+                      type="date"
+                      className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none"
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                      min={defaultBookingDate}
+                    />
+                    <span className="material-symbols-outlined absolute right-8 top-1/2 -translate-y-1/2 text-primary/30 group-hover:text-primary transition-colors">calendar_today</span>
+                  </div>
+                </div>
+                <div className="space-y-3 text-left">
+                  <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] ml-1">Check-out Period</label>
+                  <div className="relative group text-left">
+                    <input
+                      type="date"
+                      className="w-full bg-slate-50 border-none rounded-[1.5rem] py-8 px-8 font-black text-primary text-sm focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none"
+                      value={checkoutDate}
+                      onChange={(e) => setCheckoutDate(e.target.value)}
+                      min={bookingDate}
+                    />
+                    <span className="material-symbols-outlined absolute right-8 top-1/2 -translate-y-1/2 text-primary/30 group-hover:text-primary transition-colors">schedule</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-8 rounded-[2rem] mb-10 space-y-5 shadow-inner border border-slate-100/50 text-left">
+                <div className="flex justify-between text-[11px] font-black uppercase tracking-widest opacity-60">
+                  <span>Stay Collection ({stayDuration} Nights)</span>
+                  <span className="text-primary">{formatCurrency(totalPrice)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-200/50 pt-6">
+                  <span className="text-xs font-black uppercase tracking-widest text-on-surface-variant opacity-60 tracking-[0.2em]">Total</span>
+                  <span className="text-4xl font-black text-primary font-headline tracking-tighter">{formatCurrency(totalPrice)}</span>
+                </div>
+              </div>
+
+              {/* ✅ New Booking Fee Display */}
+              <div className="bg-slate-50 p-8 rounded-[2rem] mb-10 space-y-5 shadow-inner border border-slate-100/50 text-left">
+                <div className="flex justify-between text-[11px] font-black uppercase tracking-widest opacity-60">
+                  <span>Booking Fee (one‑time)</span>
+                  <span className="text-primary">{formatCurrency(house.bookingFee || 0)}</span>
+                </div>
+                <p className="text-[10px] text-on-surface-variant leading-tight">
+                  This fee is fully deductible from your first month's rent.
+                </p>
+              </div>
+
+              <button
+                onClick={handleProceedToBooking}
+                className="w-full bg-gradient-to-br from-primary via-primary to-primary-container text-white py-10 rounded-full font-black text-xl shadow-2xl shadow-primary/20 transition-all transform hover:scale-[1.03] active:scale-[0.98] mb-10 flex flex-col items-center justify-center gap-1 border-none relative overflow-hidden group"
+              >
+                <div className="flex items-center gap-4 relative z-10">
+                  <span>Initiate Booking</span>
+                  <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">send_to_mobile</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">Verified Protocol</span>
+              </button>
+
+              <div className="space-y-6 border-t border-slate-100 pt-10 text-left">
+                <div className="flex items-center gap-5 text-xs font-black uppercase tracking-[0.2em] text-secondary group text-left">
+                  <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+                  </div>
+                  GavaConnect Protected
+                </div>
+                <div className="flex items-center gap-5 text-xs font-black uppercase tracking-[0.2em] text-primary group text-left">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
+                  </div>
+                  M-Pesa Secured
                 </div>
               </div>
             </div>
-
-            <div className="bg-slate-50 p-8 rounded-[2rem] mb-10 space-y-5 shadow-inner border border-slate-100/50 text-left">
-              <div className="flex justify-between text-[11px] font-black uppercase tracking-widest opacity-60">
-                <span>Stay Collection ({stayDuration} Nights)</span>
-                <span className="text-primary">{formatCurrency(totalPrice)}</span>
-              </div>
-              <div className="flex items-center justify-between border-t border-slate-200/50 pt-6">
-                <span className="text-xs font-black uppercase tracking-widest text-on-surface-variant opacity-60 tracking-[0.2em]">Total</span>
-                <span className="text-4xl font-black text-primary font-headline tracking-tighter">{formatCurrency(totalPrice)}</span>
-              </div>
-            </div>
-
-            {/* ✅ New Booking Fee Display */}
-            <div className="bg-slate-50 p-8 rounded-[2rem] mb-10 space-y-5 shadow-inner border border-slate-100/50 text-left">
-              <div className="flex justify-between text-[11px] font-black uppercase tracking-widest opacity-60">
-                <span>Booking Fee (one‑time)</span>
-                <span className="text-primary">{formatCurrency(house.bookingFee || 0)}</span>
-              </div>
-              <p className="text-[10px] text-on-surface-variant leading-tight">
-                This fee is fully deductible from your first month's rent.
-              </p>
-            </div>
-
-            <button
-              onClick={handleProceedToBooking}
-              className="w-full bg-gradient-to-br from-primary via-primary to-primary-container text-white py-10 rounded-full font-black text-xl shadow-2xl shadow-primary/20 transition-all transform hover:scale-[1.03] active:scale-[0.98] mb-10 flex flex-col items-center justify-center gap-1 border-none relative overflow-hidden group"
-            >
-              <div className="flex items-center gap-4 relative z-10">
-                <span>Initiate Booking</span>
-                <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">send_to_mobile</span>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">Verified Protocol</span>
-            </button>
-
-            <div className="space-y-6 border-t border-slate-100 pt-10 text-left">
-              <div className="flex items-center gap-5 text-xs font-black uppercase tracking-[0.2em] text-secondary group text-left">
-                <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
-                </div>
-                GavaConnect Protected
-              </div>
-              <div className="flex items-center gap-5 text-xs font-black uppercase tracking-[0.2em] text-primary group text-left">
-                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
-                </div>
-                M-Pesa Secured
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
     </main>

@@ -133,8 +133,19 @@ export const updateHouse = async (c: Context) => {
   try {
     const { houseId } = houseIdParam.parse(c.req.param());
     const updates = updateHouseSchema.parse(await c.req.json());
+    
+    // Ownership Check
+    const currentHouse = await houseService.getHouse(houseId);
+    if (!currentHouse) return c.json({ error: 'House not found' }, 404);
+    
+    const userId = c.get('userId');
+    const userRole = c.get('userRole');
+    
+    if (userRole !== 'admin' && currentHouse.landlordId !== userId) {
+      return c.json({ error: 'Forbidden: You do not have proprietary authority over this asset.' }, 403);
+    }
+
     const updated = await houseService.updateHouse(houseId, updates);
-    if (!updated) return c.json({ error: 'House not found' }, 404);
     return c.json(updated, 200);
   } catch (error: any) {
     if (error.name === 'ZodError') {
@@ -147,9 +158,20 @@ export const updateHouse = async (c: Context) => {
 export const deleteHouse = async (c: Context) => {
   try {
     const { houseId } = houseIdParam.parse(c.req.param());
-    const deleted = await houseService.deleteHouse(houseId);
-    if (!deleted) return c.json({ error: 'House not found' }, 404);
-    return c.json({ message: 'House deleted' }, 200);
+    
+    // Ownership Check
+    const currentHouse = await houseService.getHouse(houseId);
+    if (!currentHouse) return c.json({ error: 'House not found' }, 404);
+    
+    const userId = c.get('userId');
+    const userRole = c.get('userRole');
+    
+    if (userRole !== 'admin' && currentHouse.landlordId !== userId) {
+      return c.json({ error: 'Forbidden: You do not have proprietary authority to decommission this asset.' }, 403);
+    }
+
+    await houseService.deleteHouse(houseId);
+    return c.json({ message: 'House decommissioned successfully' }, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }

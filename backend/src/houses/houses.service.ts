@@ -85,7 +85,8 @@ export const listHouses = async (query: any) => {
     county,
     search,
     lat,
-    lng
+    lng,
+    landlordId
   } = query;
 
   const offset = (page - 1) * limit;
@@ -93,6 +94,7 @@ export const listHouses = async (query: any) => {
 
   // Build filter conditions
   const conditions = [];
+  if (landlordId) conditions.push(eq(houses.landlordId, landlordId));
   if (minRent !== undefined) conditions.push(sql`${houses.monthlyRent}::numeric >= ${minRent}`);
   if (maxRent !== undefined) conditions.push(sql`${houses.monthlyRent}::numeric <= ${maxRent}`);
   if (houseType) conditions.push(eq(houses.houseType, houseType));
