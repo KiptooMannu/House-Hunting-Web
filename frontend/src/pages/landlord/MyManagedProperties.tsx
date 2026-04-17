@@ -92,7 +92,17 @@ export default function MyManagedProperties() {
                 </p>
                 <div className="flex justify-between items-center pt-8 border-t border-slate-50">
                   <span className="text-2xl font-black text-primary font-headline tracking-tighter">{formatCurrency(l.monthlyRent)}</span>
-                  <div className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-secondary/10 text-secondary text-[10px] font-black uppercase tracking-widest">Active Yield</div>
+                  <div className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                    l.status === 'active' ? 'bg-secondary/10 text-secondary' :
+                    l.status === 'pending_approval' ? 'bg-amber-100 text-amber-600' :
+                    l.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                    'bg-slate-100 text-slate-500'
+                  }`}>
+                    {l.status === 'active' ? 'Active Yield' : 
+                     l.status === 'pending_approval' ? 'Under Review' : 
+                     l.status === 'rejected' ? 'Rejected' : 
+                     (l.status?.replace('_', ' ') || 'Draft')}
+                  </div>
                 </div>
               </div>
             </div>

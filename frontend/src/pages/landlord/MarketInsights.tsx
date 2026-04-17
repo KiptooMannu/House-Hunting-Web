@@ -206,25 +206,6 @@ export default function MarketInsights() {
         </div>
       </footer>
 
-      {/* Mobile bottom nav */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 backdrop-blur-xl z-50 shadow-[0_-1px_20px_rgba(0,0,0,0.05)] rounded-t-3xl">
-        <Link to="/houses" className="flex flex-col items-center text-slate-400 px-5 py-2">
-          <span className="material-symbols-outlined">explore</span>
-          <span className="text-[10px] uppercase tracking-widest mt-1">Home</span>
-        </Link>
-        <Link to="/insights" className="flex flex-col items-center bg-blue-50 text-blue-950 rounded-2xl px-5 py-2">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
-          <span className="text-[10px] uppercase tracking-widest mt-1">Insights</span>
-        </Link>
-        <Link to="/my-bookings" className="flex flex-col items-center text-slate-400 px-5 py-2">
-          <span className="material-symbols-outlined">favorite</span>
-          <span className="text-[10px] uppercase tracking-widest mt-1">Bookings</span>
-        </Link>
-        <Link to="/profile" className="flex flex-col items-center text-slate-400 px-5 py-2">
-          <span className="material-symbols-outlined">person</span>
-          <span className="text-[10px] uppercase tracking-widest mt-1">Profile</span>
-        </Link>
-      </div>
     </div>
   );
 }

@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout as logoutAction } from '../../store/authSlice';
 import { useGetProfileQuery } from '../../store/apiSlice';
 import type { RootState } from '../../store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import NotificationBell from '../../components/NotificationBell';
+import PageExit from '../../components/PageExit';
 
 export default function LandlordDashboard() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const { pathname } = useLocation();
@@ -41,61 +44,75 @@ export default function LandlordDashboard() {
   );
 
   return (
-    <div className="bg-[#FBFCFD] text-on-surface min-h-screen flex text-left font-body antialiased">
+    <div className="bg-[#FBFCFD] text-on-surface min-h-screen flex text-left font-body antialiased overflow-x-hidden relative">
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-primary/20 backdrop-blur-sm z-[45] md:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* SideNavBar */}
-      <aside className="h-screen w-72 fixed left-0 top-0 bg-white flex flex-col py-0 z-40 hidden md:flex border-r border-slate-100 shadow-sm">
-        <div className="p-10">
+      <aside className={`h-screen w-72 fixed left-0 top-0 bg-white flex flex-col py-0 z-50 transition-transform duration-300 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} border-r border-slate-100 shadow-sm`}>
+        <div className="p-10 flex items-center justify-between">
           <div className="text-2xl font-black tracking-tighter text-primary font-headline flex items-center gap-2">
             <span className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white text-base">H</span>
             Console
           </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-primary transition-colors border-none bg-transparent cursor-pointer">
+             <span className="material-symbols-outlined">close</span>
+          </button>
         </div>
         
-        <nav className="flex-1 space-y-1 px-6">
+        <nav className="flex-1 space-y-1 px-6 overflow-y-auto">
           <p className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Authority Panel</p>
           <div className="space-y-1">
             {navItems.map(item => (
               <button 
                 key={item.id}
-                onClick={() => navigate(`/landlord/${item.id}`)}
-                className={`w-full flex items-center gap-4 px-4 py-4 transition-all group rounded-2xl relative ${
+                onClick={() => {
+                  navigate(`/landlord/${item.id}`);
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center px-6 py-4 transition-all group rounded-2xl relative border-none cursor-pointer ${
                   activeTab === item.id 
                     ? 'text-primary bg-primary/5 font-black shadow-sm' 
                     : 'text-slate-500 hover:bg-slate-50'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[22px] ${activeTab === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-primary'} transition-colors`}>{item.icon}</span>
-                <span className="font-headline text-sm tracking-tight">{item.label}</span>
+                <span className={`material-symbols-outlined text-[20px] shrink-0 mr-4 ${activeTab === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-primary'} transition-colors`}>{item.icon}</span>
+                <span className="font-headline text-sm tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
               </button>
             ))}
           </div>
         </nav>
 
         <div className="p-6">
-          <div className="bg-primary p-8 rounded-[2.5rem] relative overflow-hidden shadow-2xl shadow-primary/20">
+          <div className="bg-primary p-6 rounded-[2rem] relative overflow-hidden shadow-2xl shadow-primary/20 hidden lg:block">
             <div className="relative z-10 text-white">
-              <h4 className="font-black font-headline text-xs uppercase tracking-widest mb-3 opacity-60">Intelligence Pack</h4>
-              <p className="text-xs font-medium leading-relaxed mb-6 opacity-90">Unlock regional hot-zones and seasonal yield patterns.</p>
-              <button className="w-full bg-white text-primary text-[10px] font-black uppercase tracking-[0.2em] py-3 rounded-xl hover:bg-blue-50 transition-all">
-                Activate Premium
+              <h4 className="font-black font-headline text-[10px] uppercase tracking-widest mb-2 opacity-60">Intelligence Pack</h4>
+              <p className="text-[10px] font-medium leading-relaxed mb-4 opacity-90">Unlock regional hot-zones and seasonal yield patterns.</p>
+              <button className="w-full bg-white text-primary text-[10px] font-black uppercase tracking-[0.2em] py-2.5 rounded-xl hover:bg-blue-50 transition-all border-none cursor-pointer">
+                Activate
               </button>
             </div>
-            {/* Abstract Decors */}
-            <div className="absolute -top-12 -right-12 w-32 h-32 bg-secondary/30 rounded-full blur-3xl"></div>
           </div>
           
-          <div className="mt-8 flex items-center gap-3 bg-slate-50/80 p-4 rounded-[2rem] border border-slate-100">
-            <Avatar className="w-10 h-10 ring-2 ring-white shadow-sm shrink-0">
+          <div className="mt-6 flex items-center gap-3 bg-slate-50/80 p-3 rounded-[1.75rem] border border-slate-100">
+            <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm shrink-0">
               <AvatarImage src={profile?.avatar} />
               <AvatarFallback className="bg-primary text-white font-bold">{profile?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden text-left">
-              <p className="text-xs font-black text-primary truncate leading-none mb-0.5">{profile?.fullName}</p>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Verified Provider</p>
+              <p className="text-[11px] font-black text-primary truncate leading-none mb-0.5">{profile?.fullName}</p>
+              <p className={`text-[9px] font-bold uppercase tracking-tighter ${profile?.accountStatus === 'active' ? 'text-slate-400' : 'text-amber-500'} truncate`}>
+                {profile?.accountStatus === 'active' ? 'Verified' : 'Pending'}
+              </p>
             </div>
             <button 
               onClick={handleLogout}
-              className="material-symbols-outlined text-slate-400 text-lg hover:text-error transition-colors p-2 rounded-full hover:bg-white"
+              className="material-symbols-outlined text-slate-400 text-base hover:text-error transition-colors p-1.5 rounded-full hover:bg-white border-none cursor-pointer bg-transparent"
             >
               logout
             </button>
@@ -104,52 +121,56 @@ export default function LandlordDashboard() {
       </aside>
 
       {/* Main Content Canvas */}
-      <main className="flex-1 md:ml-72 min-h-screen flex flex-col">
+      <main className="flex-1 md:ml-72 min-h-screen flex flex-col w-full min-w-0">
         {/* TopAppBar */}
-        <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-2xl border-b border-slate-50/50">
-          <div className="flex justify-between items-center px-12 h-24 max-w-full">
-            <div className="flex items-center gap-4">
-              <h2 className="text-2xl font-black tracking-tighter text-primary font-headline capitalize">
+        <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-3xl border-b border-slate-100/50 shadow-sm">
+          <div className="flex justify-between items-center px-4 md:px-10 h-20 md:h-28 max-w-full gap-4">
+            <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary transition-colors border-none flex items-center shrink-0 cursor-pointer"
+              >
+                <span className="material-symbols-outlined">menu</span>
+              </button>
+              <PageExit />
+              <h2 className="text-xl md:text-3xl font-black tracking-tighter text-primary font-headline capitalize italic truncate">
                 {activeTab.replace('-', ' ')}
               </h2>
             </div>
-            <div className="flex items-center gap-8">
-              <div className="flex gap-2">
-                 <button className="relative p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all">
-                    <span className="material-symbols-outlined text-xl">notifications</span>
-                    <span className="absolute top-3 right-3 w-2 h-2 bg-error rounded-full ring-2 ring-white"></span>
-                 </button>
-                 <button className="p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all">
-                    <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
+            <div className="flex items-center gap-3 md:gap-8 shrink-0">
+              <div className="flex gap-1 md:gap-2">
+                 <NotificationBell />
+                 <button className="p-3 md:p-4 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all border-none outline-none cursor-pointer hidden sm:flex">
+                    <span className="material-symbols-outlined text-sm md:text-xl">account_balance_wallet</span>
                  </button>
               </div>
               <button 
                 onClick={() => navigate('/landlord/create-listing')}
                 disabled={profile?.accountStatus !== 'active'}
-                className={`bg-primary text-white px-8 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.03] active:scale-95 transition-all flex items-center gap-2 ${profile?.accountStatus !== 'active' ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+                className={`bg-primary text-white px-4 md:px-10 h-12 md:h-16 rounded-2xl md:rounded-[1.25rem] font-black text-[9px] md:text-[10px] uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl shadow-primary/20 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3 shrink-0 border-none cursor-pointer ${profile?.accountStatus !== 'active' ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
               >
-                <span className="material-symbols-outlined text-lg">add_circle</span>
-                New Node
+                <span className="material-symbols-outlined text-sm">add_circle</span>
+                <span className="hidden xs:inline">New Node</span>
               </button>
             </div>
           </div>
         </header>
 
-        {/* Verification Banner */}
-        {profile?.accountStatus !== 'active' && (
-          <div className="mx-12 mt-8 p-6 bg-secondary/10 border-2 border-secondary border-dashed rounded-[2.5rem] flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center gap-6">
-              <div className="w-14 h-14 bg-secondary rounded-2xl flex items-center justify-center text-white shadow-lg">
-                <span className="material-symbols-outlined text-3xl">verified_user</span>
+        {/* Verification Banner: Only show if KRA PIN is missing or account is inactive */}
+        {(!profile?.kraPin || profile?.accountStatus !== 'active') && (
+          <div className="mx-12 mt-8 p-10 bg-secondary/5 border border-secondary/20 rounded-[3rem] shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10 animate-in slide-in-from-top-4 duration-700">
+            <div className="flex items-center gap-8">
+              <div className="w-16 h-16 bg-secondary rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shrink-0">
+                <span className="material-symbols-outlined text-4xl">verified_user</span>
               </div>
-              <div>
-                <h4 className="font-headline font-black text-secondary text-lg italic tracking-tighter">Fintech Verification Required.</h4>
-                <p className="text-xs font-medium text-on-surface-variant italic">Your KRA PIN or TCC has not yet been authorized by the NestFind Compliance Node.</p>
+              <div className="text-left">
+                <h4 className="font-headline font-black text-secondary text-2xl italic tracking-tighter leading-none mb-3">Fintech Verification Required.</h4>
+                <p className="text-xs font-bold text-on-surface-variant italic opacity-70">Your KRA PIN or TCC has not yet been authorized by the NestFind Compliance Node.</p>
               </div>
             </div>
             <button 
               onClick={() => navigate('/landlord/compliance')}
-              className="px-8 py-3 bg-secondary text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+              className="px-10 py-5 bg-secondary text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-secondary/20 border-none shrink-0"
             >
               Verify Identity
             </button>
@@ -161,34 +182,48 @@ export default function LandlordDashboard() {
             <Outlet />
         </div>
 
-        {/* Footer */}
-        <footer className="w-full py-20 px-12 border-t border-slate-50 bg-white">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 w-full max-w-7xl mx-auto text-left">
-            <div className="col-span-1 md:col-span-1">
-              <span className="font-headline font-black text-primary text-2xl tracking-tighter block mb-6">NestFind Kenya</span>
-              <p className="text-slate-400 text-sm leading-relaxed max-w-[200px] font-medium">High-end real estate curation and financial management across the Kenyan highlands.</p>
+        {/* Footer: Hardened Layout */}
+        <footer className="w-full py-16 px-12 border-t border-slate-100 bg-[#FBFCFD] mt-auto">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 text-left mb-16">
+              <div className="space-y-6">
+                <span className="font-headline font-black text-primary text-2xl tracking-tighter block">NestFind Kenya</span>
+                <p className="text-slate-400 text-sm leading-relaxed font-medium italic">Curated real estate and financial compliance for the Nairobi highlands.</p>
+              </div>
+              <div className="space-y-4">
+                <span className="font-headline font-black text-primary text-[10px] uppercase tracking-[0.2em]">Asset Class</span>
+                <ul className="space-y-3 text-sm font-bold text-slate-400">
+                  <li className="hover:text-primary cursor-pointer transition-colors">Portfolio Hub</li>
+                  <li className="hover:text-primary cursor-pointer transition-colors">Private Listings</li>
+                  <li className="hover:text-primary cursor-pointer transition-colors">Intelligence Desk</li>
+                </ul>
+              </div>
+              <div className="space-y-4">
+                <span className="font-headline font-black text-primary text-[10px] uppercase tracking-[0.2em]">Legal Nodes</span>
+                <ul className="space-y-3 text-sm font-bold text-slate-400">
+                  <li className="hover:text-primary cursor-pointer transition-colors">Tax Protocols</li>
+                  <li className="hover:text-primary cursor-pointer transition-colors">GavaConnect Rules</li>
+                  <li className="hover:text-primary cursor-pointer transition-colors">Privacy Shield</li>
+                </ul>
+              </div>
+              <div className="space-y-6">
+                <span className="font-headline font-black text-primary text-[10px] uppercase tracking-[0.2em]">The Intelligence Brief</span>
+                <div className="flex gap-2 p-1 bg-white rounded-xl border border-slate-100 shadow-inner">
+                  <input className="flex-1 bg-transparent px-4 py-2 text-xs border-none outline-none" placeholder="Email Registry" />
+                  <button className="bg-primary text-white p-2 rounded-lg material-symbols-outlined text-sm shadow-lg shadow-primary/20 border-none shrink-0">arrow_forward</button>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col gap-4">
-              <span className="font-headline font-black text-primary text-xs uppercase tracking-[0.2em]">Platform</span>
-              <button className="text-slate-400 text-sm font-medium hover:text-primary text-left transition-colors">Privacy Policy</button>
-              <button className="text-slate-400 text-sm font-medium hover:text-primary text-left transition-colors">Investment Terms</button>
-            </div>
-            <div className="flex flex-col gap-4">
-              <span className="font-headline font-black text-primary text-xs uppercase tracking-[0.2em]">Compliance</span>
-              <button className="text-slate-400 text-sm font-medium hover:text-primary text-left transition-colors">Tax Disclosure</button>
-              <button className="text-slate-400 text-sm font-medium hover:text-primary text-left transition-colors">GavaConnect Rules</button>
-            </div>
-            <div className="flex flex-col gap-4">
-              <span className="font-headline font-black text-primary text-xs uppercase tracking-[0.2em]">Support</span>
-              <p className="text-slate-400 text-sm font-medium hover:text-primary transition-colors cursor-pointer">Intelligence Desk</p>
-              <p className="text-slate-400 text-sm font-medium hover:text-primary transition-colors cursor-pointer">Agent Relations</p>
-            </div>
-          </div>
-          <div className="max-w-7xl mx-auto mt-20 pt-10 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">© 2024 NestFind Kenya Real Estate. Licensed by GavaConnect.</p>
-            <div className="flex gap-6">
-              <span className="material-symbols-outlined text-slate-300 hover:text-primary cursor-pointer transition-colors">public</span>
-              <span className="material-symbols-outlined text-slate-300 hover:text-primary cursor-pointer transition-colors">share</span>
+            
+            <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+              <span className="text-slate-300 font-bold text-[9px] uppercase tracking-widest italic flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-secondary"></div>
+                © 2024 NestFind Kenya Real Estate. Licensed by GavaConnect.
+              </span>
+              <div className="flex gap-6">
+                <span className="material-symbols-outlined text-slate-300 hover:text-primary cursor-pointer transition-colors text-xl">verified_user</span>
+                <span className="material-symbols-outlined text-slate-300 hover:text-primary cursor-pointer transition-colors text-xl">share</span>
+              </div>
             </div>
           </div>
         </footer>

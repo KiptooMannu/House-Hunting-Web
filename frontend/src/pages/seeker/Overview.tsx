@@ -1,7 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
-import { useGetBookingsQuery, useGetHousesQuery, useGetMarketPulseQuery } from '../../store/apiSlice';
+import { 
+  useGetBookingsQuery, 
+  useGetMarketPulseQuery, 
+  useGetSavedHousesQuery,
+  useGetNeighborhoodTrendsQuery
+} from '../../store/apiSlice';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function Overview() {
@@ -9,16 +14,20 @@ export default function Overview() {
   const navigate = useNavigate();
   
   const { data: bookings } = useGetBookingsQuery({});
-  const { data: housesData } = useGetHousesQuery({ limit: 4 });
+  const { data: realSavedHomes } = useGetSavedHousesQuery();
+  const { data: marketTrends } = useGetNeighborhoodTrendsQuery({});
   useGetMarketPulseQuery({});
 
-  const savedHomes = housesData?.items?.slice(0, 2) ?? [];
-  const pendingCount = bookings?.filter((b: any) => b.booking_status === 'pending_payment')?.length ?? 0;
+  const savedHomes = realSavedHomes?.slice(0, 2) ?? [];
+  const activeBooking = bookings?.filter((b: any) => b.status === 'confirmed' || b.status === 'pending_payment')?.[0];
+
+  const westlandsTrend = marketTrends?.find((t: any) => t.neighborhood === 'Westlands');
+  const kilimaniTrend = marketTrends?.find((t: any) => t.neighborhood === 'Kilimani');
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-5 duration-1000">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-primary p-12 lg:p-16 text-white text-left">
+      <section className="relative overflow-hidden rounded-[2.5rem] bg-primary p-8 lg:p-16 text-white text-left">
         <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none">
           <img 
             className="w-full h-full object-cover" 
@@ -27,21 +36,21 @@ export default function Overview() {
           />
         </div>
         <div className="relative z-10 max-w-2xl">
-          <h2 className="text-5xl font-black font-headline tracking-tighter mb-6">Welcome back, {user?.fullName?.split(' ')[0]}.</h2>
-          <p className="text-lg opacity-90 mb-10 font-medium leading-relaxed max-w-lg">
+          <h2 className="text-3xl lg:text-5xl font-black font-headline tracking-tighter mb-6">Welcome back, {user?.fullName?.split(' ')[0]}.</h2>
+          <p className="text-base lg:text-lg opacity-90 mb-10 font-medium leading-relaxed max-w-lg">
             Your curation has been updated with new matches in Westlands. Ready to find your next legacy property?
           </p>
           <div className="flex flex-wrap gap-4">
             <button 
               onClick={() => navigate('/houses')}
-              className="bg-white text-primary font-bold px-8 py-4 rounded-full flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-black/20"
+              className="w-full sm:w-auto bg-white text-primary font-bold px-8 py-4 rounded-full flex items-center justify-center gap-2 hover:scale-105 transition-all shadow-xl shadow-black/20"
             >
               Continue Search
               <span className="material-symbols-outlined">arrow_forward</span>
             </button>
             <button 
-              onClick={() => navigate('/chatbot')}
-              className="bg-white/10 backdrop-blur-md text-white font-bold px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all flex items-center gap-2"
+              onClick={() => navigate('/user/canvas')}
+              className="w-full sm:w-auto bg-white/10 backdrop-blur-md text-white font-bold px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined">auto_awesome</span>
               Talk to AI Concierge
@@ -109,19 +118,19 @@ export default function Overview() {
               <div className="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm">
                 <div>
                   <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Westlands Avg.</p>
-                  <p className="font-black text-primary">KSh 185k</p>
+                  <p className="font-black text-primary">{westlandsTrend ? formatCurrency(westlandsTrend.avgRent) : 'KSh 185k'}</p>
                 </div>
                 <span className="text-secondary text-xs font-bold flex items-center bg-secondary/10 px-2 py-1 rounded-full">+4.2%</span>
               </div>
               <div className="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm">
                 <div>
                   <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Kilimani Avg.</p>
-                  <p className="font-black text-primary">KSh 160k</p>
+                  <p className="font-black text-primary">{kilimaniTrend ? formatCurrency(kilimaniTrend.avgRent) : 'KSh 160k'}</p>
                 </div>
                 <span className="text-error text-xs font-bold flex items-center bg-error/10 px-2 py-1 rounded-full">-1.8%</span>
               </div>
             </div>
-            <button onClick={() => navigate('/insights')} className="w-full py-3 text-xs font-bold text-primary hover:bg-white rounded-xl transition-all">
+            <button onClick={() => navigate('/Insights')} className="w-full py-3 text-xs font-bold text-primary hover:bg-white rounded-xl transition-all">
               View Detailed Insights
             </button>
           </div>
@@ -131,16 +140,20 @@ export default function Overview() {
             <div className="relative z-10">
               <h3 className="font-black font-headline text-on-secondary-container flex items-center gap-2 mb-6 uppercase tracking-widest text-xs">
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                Active Bookings
+                Booking Status
               </h3>
-              {pendingCount > 0 ? (
+              {activeBooking ? (
                 <>
-                  <p className="text-[10px] font-black text-on-secondary-fixed-variant mb-1 uppercase tracking-widest">PENDING CONFIRMATION</p>
-                  <h4 className="font-black text-xl text-on-secondary-container mb-1">Modern Loft @ Westlands</h4>
-                  <p className="text-sm text-on-secondary-container/70 mb-8">Verification in progress via GavaConnect™</p>
+                  <p className="text-[10px] font-black text-on-secondary-fixed-variant mb-1 uppercase tracking-widest">
+                    {activeBooking.status.replace('_', ' ')}
+                  </p>
+                  <h4 className="font-black text-xl text-on-secondary-container mb-1 truncate">{activeBooking.house?.title || 'Cluster Node'}</h4>
+                  <p className="text-sm text-on-secondary-container/70 mb-8 border-t border-on-secondary-container/10 pt-4">
+                    Secure verification via GavaConnect™
+                  </p>
                 </>
               ) : (
-                <p className="text-sm text-on-secondary-container/70 mb-8">No active bookings verified at this moment.</p>
+                <p className="text-sm text-on-secondary-container/70 mb-8">Ready to curate your next acquisition?</p>
               )}
               <button 
                 onClick={() => navigate('/user/bookings')}

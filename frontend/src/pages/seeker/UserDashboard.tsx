@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout as logoutAction } from '../../store/authSlice';
 import type { RootState } from '../../store';
 import { useGetProfileQuery } from '../../store/apiSlice';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import NotificationBell from '../../components/NotificationBell';
+import PageExit from '../../components/PageExit';
 
 export default function UserDashboard() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -41,15 +44,26 @@ export default function UserDashboard() {
   );
 
   return (
-    <div className="bg-[#FBFCFD] text-on-surface antialiased">
-      <div className="flex min-h-screen">
+    <div className="bg-[#FBFCFD] text-on-surface antialiased overflow-x-hidden">
+      <div className="flex min-h-screen relative">
+        {/* Mobile Backdrop */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-primary/20 backdrop-blur-sm z-[45] lg:hidden transition-opacity"
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+        )}
+
         {/* Sidebar Navigation */}
-        <aside className="fixed left-0 top-0 h-full w-72 bg-white border-r border-slate-100 z-50 flex flex-col shadow-sm">
-          <div className="p-10">
+        <aside className={`fixed left-0 top-0 h-full w-72 bg-white border-r border-slate-100 z-50 flex flex-col shadow-sm transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="p-10 flex items-center justify-between">
             <div className="text-2xl font-black tracking-tighter text-primary font-headline flex items-center gap-2">
               <span className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white text-base">H</span>
               Curator
             </div>
+            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-primary border-none bg-transparent">
+               <span className="material-symbols-outlined">close</span>
+            </button>
           </div>
           
           <nav className="flex-1 px-6 space-y-1">
@@ -58,6 +72,7 @@ export default function UserDashboard() {
               <Link
                 key={item.id}
                 to={item.path}
+                onClick={() => setIsSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-2xl transition-all duration-300 ${
                   activeId === item.id 
                   ? 'text-primary bg-primary/5 shadow-sm' 
@@ -98,42 +113,46 @@ export default function UserDashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 ml-72 flex flex-col">
+        <div className="flex-1 lg:ml-72 flex flex-col w-full min-w-0">
           {/* Top Nav Shell */}
           <nav className="sticky top-0 w-full z-40 bg-white/60 backdrop-blur-2xl border-b border-slate-50/50">
-            <div className="flex justify-between items-center px-12 h-24">
-              <div className="flex items-center gap-8">
-                <div className="relative w-80 group">
+            <div className="flex justify-between items-center px-4 md:px-12 h-20 md:h-24 gap-4">
+              <div className="flex items-center gap-4 md:gap-8 flex-1">
+                <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="lg:hidden p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary border-none flex items-center"
+                >
+                  <span className="material-symbols-outlined">menu</span>
+                </button>
+                <PageExit />
+                <div className="relative flex-1 max-w-sm group hidden sm:block">
                   <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg transition-transform group-focus-within:scale-110">search</span>
                   <input 
                     className="w-full pl-14 pr-6 py-4 bg-slate-100/50 border-none rounded-2xl font-bold text-sm focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-slate-400" 
-                    placeholder="Search estates or agents..." 
+                    placeholder="Search estates..." 
                     type="text" 
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-8">
-                <div className="flex gap-2">
-                   <button className="relative p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all">
-                      <span className="material-symbols-outlined text-xl">notifications</span>
-                      <span className="absolute top-3 right-3 w-2 h-2 bg-error rounded-full ring-2 ring-white"></span>
-                   </button>
-                   <button className="p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all">
+              <div className="flex items-center gap-3 md:gap-8">
+                <div className="flex gap-1 md:gap-2">
+                   <NotificationBell />
+                   <button className="p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all hidden xs:flex">
                       <span className="material-symbols-outlined text-xl">tune</span>
                    </button>
                 </div>
                 <button 
-                  onClick={() => navigate('/chatbot')} 
-                  className="bg-primary text-white px-8 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.03] active:scale-95 duration-200 transition-all flex items-center gap-2"
+                  onClick={() => navigate('/user/canvas')} 
+                  className="bg-primary text-white px-4 md:px-8 h-12 md:h-14 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.03] active:scale-95 duration-200 transition-all flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">auto_awesome</span>
-                  Concierge
+                  <span className="hidden sm:inline">Concierge</span>
                 </button>
               </div>
             </div>
           </nav>
 
-          <main className="flex-1 py-12 px-12 max-w-[1400px] mx-auto w-full">
+          <main className="flex-1 py-8 md:py-12 px-4 md:px-12 max-w-[1400px] mx-auto w-full">
             <Outlet />
           </main>
         </div>

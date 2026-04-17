@@ -54,6 +54,7 @@ export default function HouseListings() {
     bedrooms: searchParams.get('bedrooms') || '',
     search: searchParams.get('search') || '',
     houseType: searchParams.get('houseType') || '',
+    status: user?.role === 'landlord' ? undefined : 'active',
     // If landlord, only show their own listings
     ...(user?.role === 'landlord' ? { landlordId: user.userId } : {})
   };

@@ -3,10 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCreateHouseMutation, useUpdateHouseMutation, useGetLocationsQuery } from '../../store/apiSlice';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
+import { toast } from 'react-hot-toast';
 
 
 const HOUSE_TYPES = [
-  'Apartment', 'Penthouse', 'Villa', 'Townhouse', 'Mansion', 'Bungalow', 'Bedsitter', 'Studio'
+  { label: 'Bedsitter', value: 'bedsitter' },
+  { label: 'Studio Apartment', value: 'studio' },
+  { label: '1 Bedroom', value: 'one_bedroom' },
+  { label: '2 Bedroom', value: 'two_bedroom' },
+  { label: '3 Bedroom', value: 'three_bedroom' },
+  { label: '4+ Bedroom', value: 'four_bedroom_plus' },
+  { label: 'Mansion', value: 'mansion' },
+  { label: 'Bungalow', value: 'bungalow' }
 ];
 
 // Hardcoded locations fallback if API fails
@@ -46,7 +54,7 @@ export default function CreateListing() {
   const [form, setForm] = useState({
     title: houseData?.title || '',
     description: houseData?.description || '',
-    houseType: HOUSE_TYPES.find(t => t.toLowerCase() === houseData?.houseType?.toLowerCase()) || (houseData?.houseType ? 'Apartment' : ''),
+    houseType: houseData?.houseType || '',
     location: (houseData?.location?.town ? `${houseData.location.county} - ${houseData.location.town}` : '') || (houseData?.town ? `Nairobi - ${houseData.town}` : ''),
     rent: houseData?.monthlyRent || '',
     bedrooms: houseData?.bedrooms || 1,
@@ -80,19 +88,22 @@ export default function CreateListing() {
       if (isEdit) {
         await updateHouse({
           id: houseData.houseId,
-          title: form.title,
-          description: form.description,
-          houseType: form.houseType,
-          monthlyRent: Number(form.rent),
-          bedrooms: Number(form.bedrooms),
-          bathrooms: Number(form.bathrooms),
-          amenities: form.amenities,
-          bookingFee: Number(form.bookingFee),
-          location: {
-            town: form.location,
-            county: form.location.split(' - ')[0] || 'Nairobi'
+          data: {
+            title: form.title,
+            description: form.description,
+            houseType: form.houseType,
+            monthlyRent: Number(form.rent),
+            bedrooms: Number(form.bedrooms),
+            bathrooms: Number(form.bathrooms),
+            amenities: form.amenities,
+            bookingFee: Number(form.bookingFee),
+            location: {
+              town: form.location,
+              county: form.location.split(' - ')[0] || 'Nairobi'
+            }
           }
         }).unwrap();
+        toast.success('Listing refined successfully!');
       } else {
         const fd = new FormData();
         fd.append('title', form.title);
@@ -108,6 +119,7 @@ export default function CreateListing() {
         imageFiles.forEach((file) => fd.append('images', file));
 
         await createHouse(fd).unwrap();
+        toast.success('Listing created successfully!');
       }
       navigate('/landlord/overview');
     } catch (err: any) {
@@ -158,7 +170,7 @@ export default function CreateListing() {
                   onChange={e => setForm({ ...form, houseType: e.target.value })}
                 >
                   <option value="">Select Type</option>
-                  {HOUSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {HOUSE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div className="space-y-2">

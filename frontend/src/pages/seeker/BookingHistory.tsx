@@ -1,11 +1,36 @@
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { useGetBookingsQuery } from '../../store/apiSlice';
+import { useGetBookingsQuery, useCreateMpesaPushMutation } from '../../store/apiSlice';
 import type { RootState } from '../../store';
 import { formatCurrency } from '../../utils/helpers';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'react-hot-toast';
 
 export default function BookingHistory() {
   const { user } = useSelector((state: RootState) => state.auth);
-  const { data: bookings, isLoading } = useGetBookingsQuery({ seekerId: user?.userId });
+  const { data: bookings, isLoading, refetch } = useGetBookingsQuery({ seekerId: user?.userId });
+  const [createMpesaPush, { isLoading: isPaying }] = useCreateMpesaPushMutation();
+
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [payingBookingId, setPayingBookingId] = useState<number | null>(null);
+
+  const handleMpesaPay = async (bookingId: number) => {
+    if (!phoneNumber) {
+      toast.error('Please enter a valid phone number.');
+      return;
+    }
+    setPayingBookingId(bookingId);
+    try {
+      await createMpesaPush({ bookingId, phone_number: phoneNumber }).unwrap();
+      toast.success('STK Push sent! Please check your phone.');
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Payment initiation failed.');
+    } finally {
+      setPayingBookingId(null);
+    }
+  };
 
   const statusMap: Record<string, { label: string, color: string, bg: string, ring: string }> = {
     pending_payment: { label: 'Pending Verification', color: 'text-tertiary', bg: 'bg-tertiary/10', ring: 'ring-tertiary/20' },
@@ -138,6 +163,34 @@ export default function BookingHistory() {
                           <p className="text-[10px] text-on-surface-variant font-bold uppercase opacity-40">Contract Price</p>
                         </div>
                       </div>
+
+                      {/* Payment Action for Pending Verification */}
+                      {booking.status === 'pending_payment' && (
+                        <div className="bg-tertiary/5 border border-tertiary/10 p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-4 animate-in fade-in zoom-in-95">
+                           <div className="flex-1 text-left">
+                              <p className="text-xs font-bold text-tertiary mb-1">Authorization Required</p>
+                              <p className="text-[10px] text-on-surface-variant font-medium leading-relaxed">Please complete the booking fee payment via M-Pesa to activate your viewing schedule.</p>
+                           </div>
+                           <div className="flex gap-2 w-full md:w-auto">
+                              <div className="relative flex-1 md:w-48">
+                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">+254</span>
+                                 <Input 
+                                   className="pl-12 h-10 text-xs font-bold bg-white border-slate-100 rounded-xl"
+                                   placeholder="712345678"
+                                   value={phoneNumber}
+                                   onChange={(e) => setPhoneNumber(e.target.value)}
+                                 />
+                              </div>
+                              <Button 
+                                onClick={() => handleMpesaPay(booking.bookingId)}
+                                disabled={isPaying || payingBookingId === booking.bookingId}
+                                className="bg-[#39B54A] hover:bg-[#2e943c] text-white font-black text-[10px] uppercase tracking-widest px-6 h-10 rounded-xl border-none shadow-lg shadow-[#39B54A]/20"
+                              >
+                                {payingBookingId === booking.bookingId ? 'Syncing...' : 'Quick Pay'}
+                              </Button>
+                           </div>
+                        </div>
+                      )}
 
                       {/* Info Grid */}
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-8 py-8 my-8 border-y border-slate-50">

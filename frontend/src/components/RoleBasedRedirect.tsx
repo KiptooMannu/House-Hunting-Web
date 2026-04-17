@@ -5,10 +5,13 @@ import type { RootState } from '../store';
 interface RoleBasedRedirectProps {
   userPath: string;
   landlordPath: string;
+  adminPath?: string;
 }
 
-export default function RoleBasedRedirect({ userPath, landlordPath }: RoleBasedRedirectProps) {
+export default function RoleBasedRedirect({ userPath, landlordPath, adminPath = '/admin/overview' }: RoleBasedRedirectProps) {
   const { user } = useSelector((state: RootState) => state.auth);
-  const isAdminOrLandlord = user?.role === 'landlord' || user?.role === 'admin';
-  return <Navigate to={isAdminOrLandlord ? landlordPath : userPath} replace />;
+  
+  if (user?.role === 'admin') return <Navigate to={adminPath} replace />;
+  if (user?.role === 'landlord') return <Navigate to={landlordPath} replace />;
+  return <Navigate to={userPath} replace />;
 }

@@ -1,13 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { useGetHousesQuery } from '../../store/apiSlice';
+import { useGetSavedHousesQuery } from '../../store/apiSlice';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function SavedHomes() {
   const navigate = useNavigate();
-  const { data: housesData, isLoading } = useGetHousesQuery({ page: 1, limit: 12 });
-  
-  // Mocking saved state since backend saved_homes relationship might not be fully exposed yet in getHouses
-  const savedHomes = housesData?.items?.slice(0, 5) || [];
+  const { data: savedHomes, isLoading } = useGetSavedHousesQuery();
 
   if (isLoading) return <div className="h-96 flex items-center justify-center animate-pulse text-primary font-black uppercase tracking-widest">Curating Gallery...</div>;
 

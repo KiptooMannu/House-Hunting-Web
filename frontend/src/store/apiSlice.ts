@@ -8,7 +8,10 @@ const rawBaseQuery = fetchBaseQuery({
   prepareHeaders: (headers) => {
     const token = localStorage.getItem('token');
     if (token) {
-      headers.set('authorization', `Bearer ${token}`);
+      console.log('🔑 [API] Attaching Authorization header');
+      headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      console.log('⚠️ [API] No token found in localStorage');
     }
     return headers;
   },
@@ -66,8 +69,17 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['House', 'Booking', 'User', 'Payment', 'Compliance'],
+  tagTypes: ['House', 'Booking', 'User', 'Payment', 'Compliance', 'Notification', 'SavedHouse'],
   endpoints: (builder) => ({
+    // User Endpoints
+    listUsers: builder.query<any, any>({
+      query: (params) => ({
+        url: '/users',
+        params,
+      }),
+      providesTags: ['User'],
+    }),
+
     // Auth Endpoints
     login: builder.mutation({
       query: (credentials) => ({
@@ -95,6 +107,23 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['User'],
     }),
+    updateUser: builder.mutation<any, { userId: number; data: any }>({
+      query: ({ userId, data }) => ({
+        url: `/users/${userId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+
+    verifyKra: builder.mutation<any, { userId: number; kraPin: string }>({
+      query: (data) => ({
+        url: '/compliance/gava/verify',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['User', 'Compliance'],
+    }),
 
     // House Endpoints
     getHouses: builder.query({
@@ -116,15 +145,15 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['House'],
     }),
-    updateHouse: builder.mutation({
-      query: ({ id, ...data }) => ({
+    updateHouse: builder.mutation<any, { id: number; data: any }>({
+      query: ({ id, data }) => ({
         url: `/houses/${id}`,
         method: 'PUT',
         body: data,
       }),
       invalidatesTags: ['House'],
     }),
-    deleteHouse: builder.mutation({
+    deleteHouse: builder.mutation<any, number>({
       query: (id) => ({
         url: `/houses/${id}`,
         method: 'DELETE',
@@ -132,15 +161,53 @@ export const apiSlice = createApi({
       invalidatesTags: ['House'],
     }),
 
+    approveHouse: builder.mutation<any, number>({
+      query: (houseId) => ({
+        url: `/houses/${houseId}/approve`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['House'],
+    }),
+
+    rejectHouse: builder.mutation<any, { houseId: number; reason: string }>({
+      query: ({ houseId, reason }) => ({
+        url: `/houses/${houseId}/reject`,
+        method: 'PATCH',
+        body: { reason },
+      }),
+      invalidatesTags: ['House'],
+    }),
+    revokeHouse: builder.mutation<any, { houseId: number; reason: string }>({
+      query: ({ houseId, reason }) => ({
+        url: `/houses/${houseId}/revoke`,
+        method: 'PATCH',
+        body: { reason },
+      }),
+      invalidatesTags: ['House'],
+    }),
+    
+    toggleSavedHouse: builder.mutation<any, { houseId: number; saved: boolean }>({
+      query: ({ houseId, saved }) => ({
+        url: `/houses/${houseId}/save`,
+        method: 'POST',
+        body: { saved },
+      }),
+      invalidatesTags: ['SavedHouse'],
+    }),
+    getSavedHouses: builder.query<any, void>({
+      query: () => '/houses/collections/saved',
+      providesTags: ['SavedHouse'],
+    }),
+
     // Booking Endpoints
-    getBookings: builder.query({
+    getBookings: builder.query<any, any>({
       query: (params) => ({
         url: '/bookings',
         params,
       }),
       providesTags: ['Booking'],
     }),
-    createBooking: builder.mutation({
+    createBooking: builder.mutation<any, any>({
       query: (data) => ({
         url: '/bookings',
         method: 'POST',
@@ -148,7 +215,7 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['Booking'],
     }),
-    updateBookingStatus: builder.mutation({
+    updateBookingStatus: builder.mutation<any, { id: number; status: string }>({
       query: ({ id, status }) => ({
         url: `/bookings/${id}/status`,
         method: 'PUT',
@@ -217,12 +284,12 @@ export const apiSlice = createApi({
     
     // Compliance Endpoints
     getComplianceLogs: builder.query({
-      query: () => '/compliance-logs',
+      query: () => '/compliance',
       providesTags: ['Compliance'],
     }),
     sendRevenueToGava: builder.mutation({
       query: (data) => ({
-        url: '/compliance-logs/gava/send-revenue',
+        url: '/compliance/gava/send-revenue',
         method: 'POST',
         body: data,
       }),
@@ -230,7 +297,7 @@ export const apiSlice = createApi({
     }),
     submitNilFiling: builder.mutation({
       query: (data) => ({
-        url: '/compliance-logs/gava/nil-filing',
+        url: '/compliance/gava/nil-filing',
         method: 'POST',
         body: data,
       }),
@@ -238,13 +305,32 @@ export const apiSlice = createApi({
     }),
     validateTcc: builder.mutation({
       query: (data) => ({
-        url: '/compliance-logs/gava/validate-tcc',
+        url: '/compliance/gava/validate-tcc',
         method: 'POST',
         body: data,
       }),
     }),
+    verifyCompliance: builder.mutation({
+      query: (data) => ({
+        url: '/compliance/gava/verify',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Compliance', 'User'],
+    }),
+    verifyNationalId: builder.mutation({
+      query: (data) => ({
+        url: '/compliance/gava/verify-id',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Compliance', 'User'],
+    }),
 
     // Analytics Endpoints
+    getOverviewStats: builder.query<any, any>({
+      query: () => '/analytics/overview-stats',
+    }),
     getAdminStats: builder.query({
       query: () => '/analytics/admin-stats',
     }),
@@ -253,6 +339,31 @@ export const apiSlice = createApi({
     }),
     getNeighborhoodTrends: builder.query({
       query: () => '/analytics/neighborhood-trends',
+    }),
+    
+    // Audit Logs Endpoints
+    listAuditLogs: builder.query({
+      query: () => '/audit-logs',
+    }),
+
+    // Notifications Endpoints
+    getNotifications: builder.query<any, any>({
+      query: () => '/notifications',
+      providesTags: ['Notification'],
+    }),
+    markNotificationRead: builder.mutation<any, number>({
+      query: (id) => ({
+        url: `/notifications/${id}/read`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Notification'],
+    }),
+    markAllNotificationsRead: builder.mutation<any, void>({
+      query: () => ({
+        url: '/notifications/read-all',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Notification'],
     }),
   }),
 });
@@ -283,7 +394,22 @@ export const {
   useSendRevenueToGavaMutation,
   useSubmitNilFilingMutation,
   useValidateTccMutation,
+  useVerifyComplianceMutation,
   useGetAdminStatsQuery,
   useGetMarketPulseQuery,
   useGetNeighborhoodTrendsQuery,
+  useToggleSavedHouseMutation,
+  useGetSavedHousesQuery,
+  useApproveHouseMutation,
+  useRejectHouseMutation,
+  useRevokeHouseMutation,
+  useListAuditLogsQuery,
+  useGetOverviewStatsQuery,
+  useListUsersQuery,
+  useUpdateUserMutation,
+  useVerifyKraMutation,
+  useVerifyNationalIdMutation,
+  useGetNotificationsQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
 } = apiSlice;

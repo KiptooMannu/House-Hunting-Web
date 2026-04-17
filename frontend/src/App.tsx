@@ -1,9 +1,11 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
 import ProtectedRoute from './components/ProtectedRoute';
 import SessionTimeout from './components/SessionTimeout';
+import MobileBottomNav from './components/MobileBottomNav';
+import { Toaster } from 'react-hot-toast';
 
 // Seeker / Public / User Dashboard
 import Landing from './pages/seeker/Landing';
@@ -41,11 +43,32 @@ import MarketInsights from './pages/landlord/MarketInsights';
 import LandlordOnboarding from './pages/landlord/LandlordOnboarding';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 
+// Admin
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminOverview from './pages/admin/AdminOverview';
+import VerificationQueue from './pages/admin/VerificationQueue';
+import AdminManagedProperties from './pages/admin/ManagedProperties';
+import LandlordDirectory from './pages/admin/LandlordDirectory';
+import AuditLogs from './pages/admin/AuditLogs';
+import AdminCompliance from './pages/admin/AdminCompliance';
+import SeekerDirectory from './pages/admin/SeekerDirectory';
+import AdminSettings from './pages/admin/AdminSettings';
+
 export default function App() {
+  const { pathname } = useLocation();
+
+  // Hide global elements on specific specialized pages
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isLandlordPage = pathname.startsWith('/landlord');
+  const isAdminPage = pathname.startsWith('/admin');
+  const isUserDashboard = pathname.startsWith('/user');
+  const isHiddenPage = isAuthPage || isLandlordPage || isAdminPage || isUserDashboard;
+
   return (
     <div className="app-shell flex flex-col min-h-screen text-left">
+      <Toaster position="top-right" reverseOrder={false} />
       <SessionTimeout />
-      <Navbar />
+      {!isHiddenPage && <Navbar />}
 
       <div className="flex-grow">
         <Routes>
@@ -61,10 +84,8 @@ export default function App() {
           <Route path="/terms" element={<TermsPrivacy />} />
           <Route path="/privacy" element={<TermsPrivacy />} />
 
-          {/* ✅ Payment status page (polling for M-Pesa & card) */}
           <Route path="/payment_status" element={<PaymentStatus />} />
           <Route path="/booked-success" element={<BookedSuccess />} />
-
 
           <Route
             path="/user"
@@ -82,9 +103,11 @@ export default function App() {
             <Route path="insights" element={<UserInsights />} />
             <Route path="profile" element={<Settings />} />
           </Route>
-          <Route path="/dashboard" element={<RoleBasedRedirect userPath="/user/overview" landlordPath="/landlord/overview" />} />
-          <Route path="/profile" element={<RoleBasedRedirect userPath="/user/profile" landlordPath="/landlord/settings" />} />
-          <Route path="/my-bookings" element={<RoleBasedRedirect userPath="/user/bookings" landlordPath="/landlord/bookings" />} />
+          
+          <Route path="/dashboard" element={<RoleBasedRedirect userPath="/user/overview" landlordPath="/landlord/overview" adminPath="/admin/overview" />} />
+          <Route path="/profile" element={<RoleBasedRedirect userPath="/user/profile" landlordPath="/landlord/settings" adminPath="/admin/settings" />} />
+          <Route path="/my-bookings" element={<RoleBasedRedirect userPath="/user/bookings" landlordPath="/landlord/bookings" adminPath="/admin/overview" />} />
+          
           <Route
             path="/book/:id"
             element={
@@ -93,14 +116,25 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          {/* Keep for backward compatibility; can be removed after full migration */}
 
-
-          {/* Consolidated Admin/Landlord Routes */}
           <Route
             path="/admin"
-            element={<Navigate to="/landlord/overview" replace />}
-          />
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<AdminOverview />} />
+            <Route path="approvals" element={<VerificationQueue />} />
+            <Route path="properties" element={<AdminManagedProperties />} />
+            <Route path="landlords" element={<LandlordDirectory />} />
+            <Route path="seekers" element={<SeekerDirectory />} />
+            <Route path="audit" element={<AuditLogs />} />
+            <Route path="compliance" element={<AdminCompliance />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
           <Route
             path="/landlord"
             element={
@@ -120,14 +154,16 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="create-listing" element={<CreateListing />} />
           </Route>
+          
           <Route path="/test-api" element={<ProtectedRoute allowedRoles={['admin']}><TestEndpoints /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
 
-      <Footer />
-      <ChatbotWidget />
+      {!isHiddenPage && <Footer />}
+      {!isHiddenPage && <ChatbotWidget />}
+      <MobileBottomNav />
     </div>
   );
 }
