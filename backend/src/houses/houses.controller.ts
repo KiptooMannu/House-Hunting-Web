@@ -31,7 +31,12 @@ export const createHouse = async (c: Context) => {
         dailyRate: body['dailyRate'],
         county: body['county'],
         locationName: body['locationName'],
-        amenities: body['amenities'] || body['amenities[]'],
+        amenities: (() => {
+          const raw = body['amenities'] || body['amenities[]'];
+          if (!raw) return undefined;
+          if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === 'string').join(',');
+          return typeof raw === 'string' ? raw : undefined;
+        })(),
       };
 
       // Handle multiple images
@@ -48,7 +53,6 @@ export const createHouse = async (c: Context) => {
     }
 
     // Validate the core house data
-    // We parse strings to numbers where needed since FormData sends everything as strings
     const validatedData = createHouseSchema.parse({
       ...data,
       bedrooms: data.bedrooms ? Number(data.bedrooms) : undefined,
@@ -72,7 +76,7 @@ export const createHouse = async (c: Context) => {
     const result = await houseService.createHouse({
       ...validatedData,
       landlordId,
-      imageUrls, // Pass explicitly to service to handle image mapping
+      imageUrls,
       locationName: data.locationName,
       county: data.county
     });
@@ -83,7 +87,11 @@ export const createHouse = async (c: Context) => {
     if (error.name === 'ZodError') {
       return c.json({ error: 'Validation failed', details: error.errors }, 400);
     }
-    return c.json({ error: error.message }, 400);
+    return c.json({ 
+      error: error.message || 'Validation/Insert failed', 
+      details: error, 
+      stack: error.stack 
+    }, 400);
   }
 };
 
@@ -101,6 +109,19 @@ export const getHouse = async (c: Context) => {
 export const listHouses = async (c: Context) => {
   try {
     const query = houseListQuery.parse(c.req.query());
+    
+    // Visibility enforcement:
+    // - Admins can query any status explicitly
+    // - Landlords viewing their own portfolio (landlordId param) see all their statuses
+    // - Everyone else (public / seekers) only sees 'active' approved listings
+    const userRole = c.get('userRole'); // may be undefined for public routes
+    const isAdmin = userRole === 'admin';
+    const isOwnerQuery = !!query.landlordId; // landlord viewing their own listings
+
+    if (!isAdmin && !isOwnerQuery && !query.status) {
+      query.status = 'active'; // Default: public only sees approved listings
+    }
+
     const result = await houseService.listHouses(query);
     return c.json(result, 200);
   } catch (error: any) {
@@ -134,7 +155,6 @@ export const updateHouse = async (c: Context) => {
     const { houseId } = houseIdParam.parse(c.req.param());
     const updates = updateHouseSchema.parse(await c.req.json());
     
-    // Ownership Check
     const currentHouse = await houseService.getHouse(houseId);
     if (!currentHouse) return c.json({ error: 'House not found' }, 404);
     
@@ -159,7 +179,6 @@ export const deleteHouse = async (c: Context) => {
   try {
     const { houseId } = houseIdParam.parse(c.req.param());
     
-    // Ownership Check
     const currentHouse = await houseService.getHouse(houseId);
     if (!currentHouse) return c.json({ error: 'House not found' }, 404);
     
@@ -172,6 +191,87 @@ export const deleteHouse = async (c: Context) => {
 
     await houseService.deleteHouse(houseId);
     return c.json({ message: 'House decommissioned successfully' }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const approveListing = async (c: Context) => {
+  try {
+    const { houseId } = houseIdParam.parse(c.req.param());
+    const adminId = c.get('userId');
+    const userRole = c.get('userRole');
+
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Forbidden: Only administrators can authorize assets.' }, 403);
+    }
+
+    const updated = await houseService.approveHouse(houseId, adminId);
+    return c.json({ message: 'Listing authorized successfully', listing: updated }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const rejectListing = async (c: Context) => {
+  try {
+    const { houseId } = houseIdParam.parse(c.req.param());
+    const { reason } = await c.req.json();
+    const adminId = c.get('userId');
+    const userRole = c.get('userRole');
+
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Forbidden: Only administrators can reject assets.' }, 403);
+    }
+
+    const updated = await houseService.rejectHouse(houseId, adminId, reason);
+    return c.json({ message: 'Listing rejected', listing: updated }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const revokeListing = async (c: Context) => {
+  try {
+    const { houseId } = houseIdParam.parse(c.req.param());
+    const { reason } = await c.req.json();
+    const adminId = c.get('userId');
+    const userRole = c.get('userRole');
+
+    if (userRole !== 'admin') {
+      return c.json({ error: 'Forbidden: Only administrators can revoke authorizations.' }, 403);
+    }
+
+    const updated = await houseService.revokeHouse(houseId, adminId, reason);
+    return c.json({ message: 'Listing authorization revoked', listing: updated }, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const toggleSavedHouse = async (c: Context) => {
+  try {
+    const { houseId } = houseIdParam.parse(c.req.param());
+    const seekerId = c.get('userId');
+    const { saved } = await c.req.json();
+
+    if (saved) {
+      await houseService.saveHouse(seekerId, houseId);
+      return c.json({ message: 'House saved to collection' }, 200);
+    } else {
+      await houseService.removeSavedHouse(seekerId, houseId);
+      return c.json({ message: 'House removed from collection' }, 200);
+    }
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const listSavedHouses = async (c: Context) => {
+  try {
+    const seekerId = c.get('userId');
+    const results = await houseService.listSavedHouses(seekerId);
+    return c.json(results, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }

@@ -31,7 +31,10 @@ export const getLog = async (c: Context) => {
 
 export const listLogs = async (c: Context) => {
   try {
-    const logs = await complianceService.listLogs();
+    const role = c.get('role'); // userRole is stored as 'role' in authMiddleware
+    const userId = c.get('userId');
+    const landlordId = role === 'landlord' ? userId : undefined;
+    const logs = await complianceService.listLogs(landlordId);
     return c.json(logs, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -76,7 +79,8 @@ export const sendRevenueToGava = async (c: Context) => {
 export const submitNilFiling = async (c: Context) => {
   try {
     const body = await c.req.json();
-    const result = await complianceService.submitNilFiling(body);
+    const userId = c.get('userId');
+    const result = await complianceService.submitNilFiling({ ...body, initiatedById: userId });
     return c.json(result, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -90,6 +94,28 @@ export const validateTCC = async (c: Context) => {
         return c.json({ error: 'kraPIN and tccNumber are required.' }, 400);
     }
     const result = await complianceService.validateLandlordTCC(body.kraPIN, body.tccNumber);
+    return c.json(result, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const verifyCompliance = async (c: Context) => {
+  try {
+    const body = await c.req.json();
+    const adminId = c.get('userId');
+    const result = await complianceService.verifyCompliance({ ...body, adminId });
+    return c.json(result, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const verifyNationalId = async (c: Context) => {
+  try {
+    const body = await c.req.json();
+    const adminId = c.get('userId');
+    const result = await complianceService.verifyNationalId({ ...body, adminId });
     return c.json(result, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

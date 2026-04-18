@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HouseHunt-KE — Architecture & Compliance Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* Hero Header */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+      padding: 60px 40px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 30% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      background: linear-gradient(to right, #818cf8, #34d399, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      position: relative;
+    }
+    .hero p {
+      font-size: 1.1rem;
+      color: #94a3b8;
+      margin-top: 16px;
+      font-weight: 500;
+      position: relative;
+    }
+    .hero .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding: 8px 20px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #818cf8;
+      position: relative;
+    }
+    .badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Navigation */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+      padding: 0 40px;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+    }
+    .nav a {
+      padding: 16px 24px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #64748b;
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all 0.3s;
+    }
+    .nav a:hover, .nav a.active {
+      color: #818cf8;
+      border-bottom-color: #818cf8;
+    }
+
+    /* Sections */
+    .section {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 60px 40px;
+    }
+    .section-header {
+      margin-bottom: 40px;
+    }
+    .section-header .number {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #6366f1;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .section-header h2 {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #f1f5f9;
+    }
+    .section-header p {
+      font-size: 0.95rem;
+      color: #64748b;
+      margin-top: 8px;
+      max-width: 700px;
+      line-height: 1.7;
+    }
+
+    /* Diagram Container */
+    .diagram-container {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 40px;
+      overflow-x: auto;
+      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1),
+                  0 20px 60px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+    .diagram-container::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 40px;
+      right: 40px;
+      height: 3px;
+      background: linear-gradient(to right, #6366f1, #10b981);
+      border-radius: 0 0 4px 4px;
+    }
+
+    /* Mermaid overrides */
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      min-height: 200px;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      margin: 0 40px;
+      background: linear-gradient(to right, transparent, rgba(99, 102, 241, 0.2), transparent);
+    }
+
+    /* Legend Cards */
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .legend-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .legend-card .icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+    }
+    .legend-card h4 {
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+    }
+    .legend-card p {
+      font-size: 0.78rem;
+      color: #64748b;
+      line-height: 1.6;
+    }
+    .bg-blue { background: rgba(99, 102, 241, 0.15); }
+    .bg-green { background: rgba(16, 185, 129, 0.15); }
+    .bg-amber { background: rgba(245, 158, 11, 0.15); }
+    .bg-purple { background: rgba(168, 85, 247, 0.15); }
+    .bg-red { background: rgba(239, 68, 68, 0.15); }
+    .bg-teal { background: rgba(20, 184, 166, 0.15); }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px;
+      color: #475569;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-top: 1px solid rgba(99, 102, 241, 0.1);
+    }
+
+    /* Print styles */
+    @media print {
+      body { background: #fff; color: #000; }
+      .nav { display: none; }
+      .hero { background: #fff; border: none; }
+      .hero h1 { -webkit-text-fill-color: #1e293b; }
+      .diagram-container { box-shadow: none; border: 1px solid #e2e8f0; }
+      .section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <header class="hero">
+    <h1>HouseHunt-KE</h1>
+    <p>Architecture & Compliance Pipeline — Interactive Diagrams</p>
+    <div class="badge">
+      <span class="dot"></span>
+      All Systems Verified
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="#payment-flow" class="active">Payment → GavaConnect</a>
+    <a href="#system-arch">System Architecture</a>
+    <a href="#database-erd">Database ERD</a>
+    <a href="#rbac">Access Control</a>
+    <a href="#cancellation">Cancellation Reversal</a>
+    <a href="#job-worker">Job Worker Lifecycle</a>
+  </nav>
+
+  <!-- ═══════════════ DIAGRAM 1: Payment → GavaConnect ═══════════════ -->
+  <div id="payment-flow" class="section">
+    <div class="section-header">
+      <div class="number">Diagram 01</div>
+      <h2>Payment → GavaConnect Compliance Pipeline</h2>
+      <p>End-to-end flow from Seeker booking through M-Pesa/Stripe payment, transactional outbox, background worker processing, to KRA eTIMS receipt generation.</p>
+    </div>
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart LR
+    subgraph SK["👤 SEEKER"]
+        direction TB
+        A["Browse\nProperties"] --> B["Book\nHouse"]
+        B --> C{"Payment\nMethod?"}
+    end
+
+    subgraph MP["📱 M-PESA FLOW"]
+        direction TB
+        D["Enter Phone\nNumber"] --> E["STK Push →\nSafaricom API"]
+        E --> F["User enters\nPIN on phone"]
+        F --> G["Callback →\nParseReceipt"]
+    end
+
+    subgraph ST["💳 STRIPE FLOW"]
+        direction TB
+        H["Enter Card\nDetails"] --> I["Create Payment\nIntent"]
+        I --> J["Confirm Card\nPayment"]
+        J --> K["Verify\nIntent Status"]
+    end
+
+    subgraph TX["🔒 ATOMIC DB TRANSACTION"]
+        direction TB
+        L["✅ Update booking\n→ confirmed"]
+        L --> M["✅ Insert payment\nrecord"]
+        M --> N["✅ Enqueue job\nkra_etims_sync"]
+    end
+
+    subgraph WK["⚙️ BACKGROUND WORKER"]
+        direction TB
+        O["Poll pending\njobs (30s)"] --> P["Process Job\nType: kra_etims_sync"]
+    end
+
+    subgraph GC["🏛️ GAVACONNECT / KRA"]
+        direction TB
+        Q["Calculate Taxes"] --> R["MRI: 7.5%\nVAT: 16%\nLevy: 2%"]
+        R --> S["POST → KRA\nSandbox API"]
+        S --> T{"Response?"}
+        T -->|"200 OK"| U["✅ submitted\nsandbox"]
+        T -->|"Error"| V["⚠️ queued\nlocally"]
+        T -->|"Network"| W["🔄 offline\nsync pending"]
+    end
+
+    C -->|"M-Pesa"| D
+    C -->|"Card"| H
+    G --> L
+    K --> L
+    N --> O
+    P --> Q
+
+    style SK fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    style MP fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    style ST fill:#f0f9ff,stroke:#0ea5e9,color:#0c4a6e
+    style TX fill:#fff7ed,stroke:#f97316,color:#7c2d12
+    style WK fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style GC fill:#faf5ff,stroke:#a855f7,color:#3b0764
+      </pre>
+    </div>
+
+    <div class="legend-grid">
+      <div class="legend-card">
+        <div class="icon bg-blue">📱</div>
+        <h4>M-Pesa STK Push</h4>
+        <p>Safaricom sends PIN prompt to phone. On success, callback hits <code>/api/payments/mpesa/callback</code> with receipt number.</p>
+      </div>
+      <div class="legend-card">
+        <div class="icon bg-green">💳</div>
+        <h4>Stripe Card Payment</h4>
+        <p>Frontend confirms via Stripe.js, then calls <code>/api/payments/card/confirm</code> to verify intent status server-side.</p>
+      </div>
+      <div class="legend-card">
+        <div class="icon bg-amber">🔒</div>
+        <h4>Transactional Outbox</h4>
+        <p>Booking update, payment record, and compliance job are all committed in a single atomic DB transaction. If any fails, none persist.</p>
+      </div>
+      <div class="legend-card">
+        <div class="icon bg-purple">🏛️</div>
+        <h4>GavaConnect / KRA eTIMS</h4>
+        <p>Tax calculations (MRI 7.5%, VAT 16%, Tourism Levy 2%) are sent to the KRA Sandbox. Results logged to <code>compliance_logs</code> table.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════ DIAGRAM 2: Full System Architecture ═══════════════ -->
+  <div id="system-arch" class="section">
+    <div class="section-header">
+      <div class="number">Diagram 02</div>
+      <h2>Full System Architecture</h2>
+      <p>Four-layer architecture showing Frontend dashboards, Backend API modules, Database schema, and External service integrations.</p>
+    </div>
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart TB
+    subgraph FE["🖥️ FRONTEND — React + Vite + TypeScript"]
+        direction TB
+        subgraph DASHBOARDS["Role-Based Dashboards"]
+            direction LR
+            SD["🔍 Seeker\n─────────\nOverview\nBookings\nPayments\nSaved Homes\nDiscovery"]
+            LD["🏠 Landlord\n─────────\nProperties\nBookings\nRevenue Ledger\nCompliance Hub\nAI Concierge"]
+            AD["⚡ Admin\n─────────\nVerification Queue\nLandlord Directory\nAudit Logs\nGavaConnect\nSettings"]
+        end
+        STATE["Redux Store + RTK Query — apiSlice.ts"]
+    end
+
+    subgraph BE["⚡ BACKEND — Hono + Node.js"]
+        direction TB
+        subgraph MODS["API Modules"]
+            direction LR
+            M1["Auth"] --- M2["Users"] --- M3["Houses"] --- M4["Bookings"]
+            M5["Payments"] --- M6["Compliance"] --- M7["Chatbot"] --- M8["Analytics"]
+            M9["Notifications"] --- M10["Audit Logs"] --- M11["Locations"] --- M12["Images"]
+        end
+        MW["Middleware: JWT Auth → Role Guards — admin | landlord | seeker"]
+        subgraph UTILS["Utilities"]
+            direction LR
+            U1["Job Worker\n30s Poll"] --- U2["Pricing\nEngine"] --- U3["KRA\nThrottler"] --- U4["Winston\nLogger"] --- U5["Cloudinary\nCDN"]
+        end
+    end
+
+    subgraph DB["🗄️ DATABASE — PostgreSQL via Neon"]
+        direction LR
+        T1["users"] --- T2["auth"] --- T3["houses"] --- T4["bookings"]
+        T5["payments"] --- T6["compliance_logs"] --- T7["jobs"] --- T8["audit_logs"]
+        T9["notifications"] --- T10["locations"] --- T11["house_images"] --- T12["saved_houses"]
+    end
+
+    subgraph EXT["🌐 EXTERNAL APIS"]
+        direction LR
+        E1["Safaricom\nM-Pesa"] --- E2["Stripe\nPayments"] --- E3["KRA eTIMS\nGavaConnect"] --- E4["Cloudinary\nImage CDN"]
+    end
+
+    FE --> BE
+    BE --> DB
+    BE --> EXT
+
+    style FE fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    style BE fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    style DB fill:#fef9c3,stroke:#eab308,color:#713f12
+    style EXT fill:#fce7f3,stroke:#ec4899,color:#831843
+      </pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════ DIAGRAM 3: Database ERD ═══════════════ -->
+  <div id="database-erd" class="section">
+    <div class="section-header">
+      <div class="number">Diagram 03</div>
+      <h2>Database Entity Relationship Diagram</h2>
+      <p>Complete Drizzle ORM schema with 13 tables, foreign key relationships, and key columns. Built on Neon PostgreSQL.</p>
+    </div>
+    <div class="diagram-container">
+      <pre class="mermaid">
+erDiagram
+    USERS {
+        serial userId PK
+        varchar fullName
+        varchar email UK
+        varchar phone UK
+        enum role "seeker | landlord | admin"
+        enum accountStatus
+        varchar kraPin
+        varchar nationalId UK
+    }
+    AUTH {
+        serial authId PK
+        integer userId FK
+        varchar passwordHash
+        text refreshToken
+    }
+    LOCATIONS {
+        serial locationId PK
+        varchar county
+        varchar subCounty
+        varchar town
+        varchar neighborhood
+    }
+    HOUSES {
+        serial houseId PK
+        integer landlordId FK
+        integer locationId FK
+        varchar title
+        decimal bookingFee
+        decimal monthlyRent
+        enum status "active | booked | draft"
+        boolean isVerified
+        integer verifiedById FK
+    }
+    HOUSE_IMAGES {
+        serial imageId PK
+        integer houseId FK
+        text imageUrl
+        boolean isPrimary
+    }
+    CHATBOT_SESSIONS {
+        serial sessionId PK
+        integer userId FK
+        varchar sessionToken UK
+        enum status
+        text conversationHistory
+    }
+    BOOKINGS {
+        serial bookingId PK
+        integer seekerId FK
+        integer houseId FK
+        integer chatbotSessionId FK
+        enum status "pending | confirmed | cancelled"
+        decimal bookingFee
+        varchar mpesaCheckoutRequestId
+        timestamp confirmedAt
+    }
+    PAYMENTS {
+        serial paymentId PK
+        integer bookingId FK
+        integer payerId FK
+        decimal amount
+        enum method "mpesa | card"
+        enum status "pending | completed | refunded"
+        varchar mpesaReceiptNumber
+        varchar idempotencyKey UK
+    }
+    COMPLIANCE_LOGS {
+        serial logId PK
+        integer bookingId FK
+        integer initiatedById FK
+        enum action "revenue_report | nil_filing"
+        enum status "submitted_sandbox | queued"
+        decimal totalRevenueKes
+        varchar gavaConnectRequestId
+    }
+    JOBS {
+        serial jobId PK
+        varchar type
+        jsonb payload
+        enum status "pending | processing | done"
+        integer attempts
+        integer maxAttempts
+        timestamp nextRunAt
+    }
+    AUDIT_LOGS {
+        serial logId PK
+        integer performedById FK
+        enum action
+        varchar tableName
+        varchar recordId
+    }
+    NOTIFICATIONS {
+        serial notificationId PK
+        integer userId FK
+        varchar title
+        text message
+        boolean isRead
+    }
+    SAVED_HOUSES {
+        serial saveId PK
+        integer seekerId FK
+        integer houseId FK
+    }
+
+    USERS ||--o{ AUTH : "has credentials"
+    USERS ||--o{ HOUSES : "landlord owns"
+    USERS ||--o{ BOOKINGS : "seeker books"
+    USERS ||--o{ PAYMENTS : "payer"
+    USERS ||--o{ SAVED_HOUSES : "saves"
+    USERS ||--o{ CHATBOT_SESSIONS : "initiates"
+    USERS ||--o{ COMPLIANCE_LOGS : "initiates"
+    USERS ||--o{ AUDIT_LOGS : "performs"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    HOUSES ||--o{ HOUSE_IMAGES : "has images"
+    HOUSES ||--o{ BOOKINGS : "is booked"
+    HOUSES ||--o{ SAVED_HOUSES : "is saved"
+    HOUSES }o--|| LOCATIONS : "located at"
+    BOOKINGS ||--o{ PAYMENTS : "generates"
+    BOOKINGS }o--o| CHATBOT_SESSIONS : "originated from"
+    BOOKINGS ||--o| COMPLIANCE_LOGS : "triggers"
+      </pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════ DIAGRAM 4: RBAC ═══════════════ -->
+  <div id="rbac" class="section">
+    <div class="section-header">
+      <div class="number">Diagram 04</div>
+      <h2>Role-Based Access Control</h2>
+      <p>Authentication and authorization flow showing JWT verification, role extraction, and middleware-based route protection.</p>
+    </div>
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart TD
+    REQ["🌐 Incoming API Request"]
+    AUTH["🔐 authMiddleware\nVerify JWT Token"]
+    DENY401["❌ 401 Unauthorized"]
+    EXTRACT["✅ Extract userId + role\nfrom JWT payload"]
+    ROUTE{"🔀 Route Protection\nLevel?"}
+
+    PUBLIC["🟢 PUBLIC\nNo auth required"]
+    PUBLIC_EX["• GET /api/houses\n• POST /api/payments/mpesa/callback\n• POST /api/auth/login\n• POST /api/auth/register"]
+
+    AUTHED["🔵 AUTHENTICATED\nAny logged-in user"]
+    AUTHED_EX["• GET /api/bookings\n• GET /api/users/profile\n• POST /api/payments/mpesa/stkpush\n• POST /api/payments/card/create-intent"]
+
+    ELEVATED["🟠 ELEVATED\nadminOrLandlordMiddleware"]
+    ELEVCHECK{"role = admin\nOR landlord?"}
+
+    ADMIN_ONLY["🟣 ADMIN ONLY\nadminMiddleware"]
+    ADMINCHECK{"role = admin?"}
+
+    GRANT["✅ Access\nGranted"]
+    DENY403["❌ 403\nForbidden"]
+
+    ELEV_EX["• GET /api/payments/revenue\n• GET /api/compliance\n• POST /api/compliance/gava/*\n• PUT /api/payments/:id"]
+
+    ADMIN_EX["• PATCH /api/houses/:id/approve\n• PATCH /api/houses/:id/reject\n• GET /api/audit-logs\n• GET /api/analytics/admin-stats"]
+
+    REQ --> AUTH
+    AUTH -->|"Invalid / Expired"| DENY401
+    AUTH -->|"Valid Token"| EXTRACT
+    EXTRACT --> ROUTE
+
+    ROUTE -->|"Public"| PUBLIC --> PUBLIC_EX
+    ROUTE -->|"Auth Required"| AUTHED --> AUTHED_EX
+    ROUTE -->|"Elevated"| ELEVATED --> ELEVCHECK
+    ROUTE -->|"Admin Only"| ADMIN_ONLY --> ADMINCHECK
+
+    ELEVCHECK -->|"Yes"| GRANT
+    ELEVCHECK -->|"No"| DENY403
+    ADMINCHECK -->|"Yes"| GRANT
+    ADMINCHECK -->|"No"| DENY403
+
+    GRANT --> ELEV_EX
+    GRANT --> ADMIN_EX
+
+    style REQ fill:#1e293b,stroke:#475569,color:#f1f5f9
+    style AUTH fill:#1e40af,stroke:#3b82f6,color:#dbeafe
+    style DENY401 fill:#991b1b,stroke:#ef4444,color:#fecaca
+    style DENY403 fill:#991b1b,stroke:#ef4444,color:#fecaca
+    style EXTRACT fill:#065f46,stroke:#10b981,color:#d1fae5
+    style GRANT fill:#065f46,stroke:#10b981,color:#d1fae5
+    style PUBLIC fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style AUTHED fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    style ELEVATED fill:#fff7ed,stroke:#f97316,color:#7c2d12
+    style ADMIN_ONLY fill:#faf5ff,stroke:#a855f7,color:#3b0764
+      </pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════ DIAGRAM 5: Cancellation Reversal ═══════════════ -->
+  <div id="cancellation" class="section">
+    <div class="section-header">
+      <div class="number">Diagram 05</div>
+      <h2>Booking Cancellation → KRA Compliance Reversal</h2>
+      <p>When a booking is cancelled, the system issues a Credit Note to KRA, nullifying MRI and VAT tax liability for that transaction.</p>
+    </div>
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart LR
+    A["👤 Landlord / Admin\ninitiates cancellation"]
+    B["📝 updateBooking\nstatus → cancelled\n──────────\nbookings.service.ts"]
+    C["🏛️ voidRevenueInGava\nbookingId\n──────────\ncompliance.service.ts"]
+    D{"🔍 Original\nrevenue_report\nlog found?"}
+    E["📄 Insert CREDIT NOTE\n──────────\naction: revenue_void\nrevenue: -[amount]\nfees: -[fees]\nNullifies MRI + VAT"]
+    F["⚠️ Warning:\nNo active report\nto void"]
+    G["📱 Notify Seeker\nReservation cancelled\nRefund initiated"]
+    H["📱 Notify Landlord\nSlot re-opened\nfor new bookings"]
+
+    A --> B --> C --> D
+    D -->|"Yes"| E
+    D -->|"No"| F
+    E --> G
+    E --> H
+
+    style A fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    style B fill:#fff7ed,stroke:#f97316,color:#7c2d12
+    style C fill:#faf5ff,stroke:#a855f7,color:#3b0764
+    style E fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
+    style F fill:#fefce8,stroke:#eab308,color:#713f12
+    style G fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    style H fill:#fef9c3,stroke:#eab308,color:#713f12
+      </pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════ DIAGRAM 6: Job Worker Lifecycle ═══════════════ -->
+  <div id="job-worker" class="section">
+    <div class="section-header">
+      <div class="number">Diagram 06</div>
+      <h2>Background Job Worker Lifecycle</h2>
+      <p>Persistent job queue with exponential backoff retry logic. Ensures every payment eventually generates a KRA compliance record, even during API outages.</p>
+    </div>
+    <div class="diagram-container">
+      <pre class="mermaid">
+flowchart TD
+    START["🚀 Server Start\nrunWorker()"]
+    POLL["⏲️ Poll every 30 seconds\nSELECT FROM jobs\nWHERE status = pending\nAND nextRunAt < NOW\nLIMIT 5"]
+    LOCK["🔒 Set status → processing"]
+    PROCESS{"🔀 Job Type?"}
+    
+    ETIMS["🏛️ kra_etims_sync\n──────────\nsendRevenueToGava(payload)\nCalculate MRI + VAT\nPOST to KRA Sandbox"]
+    
+    SUCCESS["✅ Job Completed\nstatus → completed"]
+    
+    FAIL["❌ Exception Caught"]
+    INCREMENT["📈 attempts += 1"]
+    
+    CHECK{"attempts >=\nmaxAttempts (5)?"}
+    
+    BACKOFF["🔄 Exponential Backoff\nnextRunAt = now + 2^n × 60s\nstatus → pending"]
+    
+    DEAD["💀 Permanently Failed\nstatus → failed\nAdmin notification triggered"]
+    
+    RETURN["↩️ Return to poll loop"]
+
+    START --> POLL
+    POLL --> LOCK
+    LOCK --> PROCESS
+    PROCESS -->|"kra_etims_sync"| ETIMS
+    ETIMS -->|"Success"| SUCCESS --> RETURN
+    ETIMS -->|"Error"| FAIL
+    FAIL --> INCREMENT --> CHECK
+    CHECK -->|"No"| BACKOFF --> RETURN
+    CHECK -->|"Yes"| DEAD
+    RETURN --> POLL
+
+    style START fill:#065f46,stroke:#10b981,color:#d1fae5
+    style POLL fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    style LOCK fill:#fff7ed,stroke:#f97316,color:#7c2d12
+    style ETIMS fill:#faf5ff,stroke:#a855f7,color:#3b0764
+    style SUCCESS fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style FAIL fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
+    style BACKOFF fill:#fefce8,stroke:#eab308,color:#713f12
+    style DEAD fill:#991b1b,stroke:#ef4444,color:#fecaca
+      </pre>
+    </div>
+
+    <div class="legend-grid">
+      <div class="legend-card">
+        <div class="icon bg-amber">⏱️</div>
+        <h4>Retry Schedule</h4>
+        <p>Attempt 1: 2 min wait · Attempt 2: 4 min · Attempt 3: 8 min · Attempt 4: 16 min · Attempt 5: permanent failure.</p>
+      </div>
+      <div class="legend-card">
+        <div class="icon bg-red">💀</div>
+        <h4>Dead Letter</h4>
+        <p>After 5 failed attempts, the job is marked permanently failed. Admin is notified via the dashboard to manually investigate.</p>
+      </div>
+      <div class="legend-card">
+        <div class="icon bg-teal">🔒</div>
+        <h4>Idempotency</h4>
+        <p><code>generateETIMSReceipt</code> checks for existing non-rejected compliance logs before creating duplicates, preventing double receipts.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    HouseHunt-KE · NestFind Kenya Platform · Generated April 2026
+  </footer>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis',
+        padding: 20,
+        nodeSpacing: 40,
+        rankSpacing: 60,
+      },
+      er: {
+        useMaxWidth: true,
+        fontSize: 12,
+      },
+      themeVariables: {
+        primaryColor: '#6366f1',
+        primaryTextColor: '#1e293b',
+        primaryBorderColor: '#818cf8',
+        lineColor: '#94a3b8',
+        secondaryColor: '#10b981',
+        tertiaryColor: '#f59e0b',
+        fontFamily: 'Inter, sans-serif',
+      }
+    });
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('.nav a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
+        }
+      });
+    });
+
+    // Update active nav on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+          const activeLink = document.querySelector(`.nav a[href="#${entry.target.id}"]`);
+          if (activeLink) activeLink.classList.add('active');
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('.section').forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>

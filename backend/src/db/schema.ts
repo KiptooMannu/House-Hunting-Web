@@ -47,6 +47,8 @@ export const listingStatusEnum = pgEnum('listing_status', [
   'booked',
   'unavailable',
   'draft',
+  'pending_approval',
+  'rejected',
   'removed',
 ]);
 export const bookingStatusEnum = pgEnum('booking_status', [
@@ -103,6 +105,9 @@ export const auditActionEnum = pgEnum('audit_action', [
   'account_deactivate',
   'booking_confirm',
   'payment_received',
+  'house_approve',
+  'house_reject',
+  'house_revoke',
 ]);
 
 // ─────────────────────────────────────────────
@@ -231,7 +236,18 @@ export const houseImages = pgTable('house_images', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// 6. CHATBOT SESSIONS — declared BEFORE bookings so bookings can safely reference it
+// 6. NOTIFICATIONS
+export const notifications = pgTable('notifications', {
+  notificationId: serial('notification_id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.userId, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  type: varchar('type', { length: 50 }).default('info'), // info, success, warning, error
+  isRead: boolean('is_read').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 7. CHATBOT SESSIONS — declared BEFORE bookings so bookings can safely reference it
 export const chatbotSessions = pgTable('chatbot_sessions', {
   sessionId: serial('session_id').primaryKey(),
   userId: integer('user_id').references(() => users.userId, { onDelete: 'set null' }),
@@ -363,6 +379,24 @@ export const auditLogs = pgTable('audit_logs', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// 11. SAVED HOUSES (FAVORITES)
+export const savedHouses = pgTable(
+  'saved_houses',
+  {
+    saveId: serial('save_id').primaryKey(),
+    seekerId: integer('seeker_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade' }),
+    houseId: integer('house_id')
+      .notNull()
+      .references(() => houses.houseId, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('unique_seeker_house_save').on(table.seekerId, table.houseId),
+  ]
+);
+
 // ─────────────────────────────────────────────
 // RELATIONS
 // ─────────────────────────────────────────────
@@ -372,6 +406,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   listings: many(houses, { relationName: 'landlord_listings' }),
   verifiedHouses: many(houses, { relationName: 'verified_by' }),
   bookings: many(bookings, { relationName: 'seeker_bookings' }),
+  savedHouses: many(savedHouses),
   payments: many(payments),
   chatbotSessions: many(chatbotSessions),
   auditLogs: many(auditLogs),
@@ -403,6 +438,18 @@ export const housesRelations = relations(houses, ({ one, many }) => ({
   }),
   images: many(houseImages),
   bookings: many(bookings),
+  savedBy: many(savedHouses),
+}));
+
+export const savedHousesRelations = relations(savedHouses, ({ one }) => ({
+  seeker: one(users, {
+    fields: [savedHouses.seekerId],
+    references: [users.userId],
+  }),
+  house: one(houses, {
+    fields: [savedHouses.houseId],
+    references: [houses.houseId],
+  }),
 }));
 
 export const houseImagesRelations = relations(houseImages, ({ one }) => ({
@@ -473,6 +520,8 @@ export type TSBookings = InferSelectModel<typeof bookings>;
 export type TIBookings = InferInsertModel<typeof bookings>;
 export type TSPayments = InferSelectModel<typeof payments>;
 export type TIPayments = InferInsertModel<typeof payments>;
+export type TSSavedHouses = InferSelectModel<typeof savedHouses>;
+export type TISavedHouses = InferInsertModel<typeof savedHouses>;
 // ─────────────────────────────────────────────
 // JOBS QUEUE (PERSISTENCE & RETRIES)
 // ─────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { db } from '../db/db.js';
 import { bookings, payments, jobs, complianceLogs, houses } from '../db/schema.js';
 import { handleMpesaCallback } from '../payments/payments.service.js';
 import { runWorker } from '../utils/jobs.service.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 
 // Mock Env Vars for Testing
@@ -102,7 +102,6 @@ async function runIntegrationTest() {
   }
 }
 
-// Helper to use 'and' in query
-import { and, sql } from 'drizzle-orm';
+// Helper imports consolidated at top of file
 
 runIntegrationTest();

@@ -1,6 +1,15 @@
 import { Context } from 'hono';
 import * as analyticsService from './analytics.service.js';
 
+export const getOverviewStats = async (c: Context) => {
+  try {
+    const stats = await analyticsService.getOverviewStats();
+    return c.json(stats, 200);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
 export const getAdminStats = async (c: Context) => {
   try {
     const stats = await analyticsService.getAdminStats();

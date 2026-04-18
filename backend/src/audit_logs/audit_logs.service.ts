@@ -12,5 +12,10 @@ export const getAuditLog = async (logId: number) => {
 };
 
 export const listAuditLogs = async () => {
-  return await db.select().from(auditLogs);
+  return await db.query.auditLogs.findMany({
+    with: {
+      performedBy: true,
+    },
+    orderBy: (auditLogs, { desc }) => [desc(auditLogs.createdAt)],
+  });
 };

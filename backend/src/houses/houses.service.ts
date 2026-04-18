@@ -1,6 +1,7 @@
 import { eq, desc, asc, and, sql, inArray } from 'drizzle-orm';
 import { db } from '../db/db.js';
-import { houses, locations, houseImages } from '../db/schema.js';
+import { houses, locations, houseImages, users, notifications, savedHouses } from '../db/schema.js';
+import { createAuditLog } from '../audit_logs/audit_logs.service.js';
 
 // Mapping of sortable column names to actual column names in DB
 const sortableColumns = ['monthly_rent', 'bedrooms', 'view_count', 'booking_count', 'updated_at', 'created_at'] as const;
@@ -38,7 +39,7 @@ export const createHouse = async (input: any) => {
     const [newHouse] = await tx.insert(houses).values({
       ...houseData,
       locationId: locationId,
-      status: 'active', // Default to active for new curated listings
+      status: 'pending_approval', // New listings require admin authorization
     }).returning();
 
     // 3. Insert Images
@@ -51,6 +52,15 @@ export const createHouse = async (input: any) => {
       }));
       await tx.insert(houseImages).values(imageRecords);
     }
+
+    // 4. Create Audit Log
+    await createAuditLog({
+      action: 'create',
+      tableName: 'houses',
+      recordId: newHouse.houseId.toString(),
+      performedById: houseData.landlordId,
+      newValues: JSON.stringify({ title: newHouse.title, status: 'pending_approval' }),
+    });
 
     return { ...newHouse, images: imageUrls };
   });
@@ -90,7 +100,6 @@ export const listHouses = async (query: any) => {
   } = query;
 
   const offset = (page - 1) * limit;
-  const { locations } = await import('../db/schema.js');
 
   // Build filter conditions
   const conditions = [];
@@ -138,9 +147,11 @@ export const listHouses = async (query: any) => {
   const itemsResult = await db.select({
     house: houses,
     location: locations,
+    landlord: users,
   })
     .from(houses)
     .leftJoin(locations, eq(houses.locationId, locations.locationId))
+    .leftJoin(users, eq(houses.landlordId, users.userId))
     .where(whereClause)
     .orderBy(orderExpr)
     .limit(limit)
@@ -159,6 +170,7 @@ export const listHouses = async (query: any) => {
   const items = itemsResult.map(r => ({
     ...r.house,
     location: r.location,
+    landlord: r.landlord,
     images: imagesList.filter(img => img.houseId === r.house.houseId)
   }));
 
@@ -181,8 +193,97 @@ export const deleteHouse = async (houseId: number) => {
   return deleted;
 };
 
+export const approveHouse = async (houseId: number, adminId: number) => {
+  const house = await db.query.houses.findFirst({ where: eq(houses.houseId, houseId) });
+  if (!house) throw new Error('House not found');
+
+  const [updated] = await db.update(houses).set({ 
+    status: 'active', 
+    isVerified: true, 
+    verifiedById: adminId, 
+    verifiedAt: new Date(),
+    updatedAt: new Date() 
+  }).where(eq(houses.houseId, houseId)).returning();
+
+  // Create Audit Log
+  await createAuditLog({
+    action: 'house_approve',
+    tableName: 'houses',
+    recordId: houseId.toString(),
+    performedById: adminId,
+    newValues: JSON.stringify({ houseId, status: 'active' }),
+  });
+
+  // Notify Landlord
+  await db.insert(notifications).values({
+    userId: house.landlordId,
+    title: 'Property Approved! 🎉',
+    message: `Your property listing "${house.title}" has been reviewed and authorized. It is now live for seekers to book.`,
+    type: 'success',
+  });
+
+  return updated;
+};
+
+export const rejectHouse = async (houseId: number, adminId: number, reason: string) => {
+  const house = await db.query.houses.findFirst({ where: eq(houses.houseId, houseId) });
+  if (!house) throw new Error('House not found');
+
+  const [updated] = await db.update(houses).set({ 
+    status: 'rejected', 
+    updatedAt: new Date() 
+  }).where(eq(houses.houseId, houseId)).returning();
+
+  // Notify Landlord
+  await db.insert(notifications).values({
+    userId: house.landlordId,
+    title: 'Listing Update Required',
+    message: `Your property listing "${house.title}" was not approved. Reason: ${reason}. Please update the details and resubmit.`,
+    type: 'warning',
+  });
+
+  // Create Audit Log
+  await createAuditLog({
+    action: 'house_reject',
+    tableName: 'houses',
+    recordId: houseId.toString(),
+    performedById: adminId,
+    newValues: JSON.stringify({ houseId, status: 'rejected', reason }),
+  });
+
+  return updated;
+};
+
+export const revokeHouse = async (houseId: number, adminId: number, reason: string) => {
+  const house = await db.query.houses.findFirst({ where: eq(houses.houseId, houseId) });
+  if (!house) throw new Error('House not found');
+
+  const [updated] = await db.update(houses).set({ 
+    status: 'pending_approval',
+    updatedAt: new Date() 
+  }).where(eq(houses.houseId, houseId)).returning();
+
+  // Create Audit Log
+  await createAuditLog({
+    action: 'house_revoke',
+    tableName: 'houses',
+    recordId: houseId.toString(),
+    performedById: adminId,
+    newValues: JSON.stringify({ houseId, status: 'pending_approval', reason }),
+  });
+
+  // Notify Landlord
+  await db.insert(notifications).values({
+    userId: house.landlordId,
+    title: 'Listing Authorization Revoked',
+    message: `Your property listing "${house.title}" has been moved back to pending status for review. Reason: ${reason}.`,
+    type: 'warning',
+  });
+
+  return updated;
+};
+
 export const listUniqueTowns = async () => {
-  const { locations } = await import('../db/schema.js');
   const results = await db.selectDistinct({ town: locations.town })
     .from(locations)
     .where(sql`${locations.town} IS NOT NULL`)
@@ -191,7 +292,6 @@ export const listUniqueTowns = async () => {
 };
 
 export const listUniqueLocations = async () => {
-  const { locations } = await import('../db/schema.js');
   return await db.selectDistinct({ 
     town: locations.town, 
     county: locations.county 
@@ -202,4 +302,30 @@ export const listUniqueLocations = async () => {
       sql`${locations.county} IS NOT NULL`
     ))
     .orderBy(asc(locations.county), asc(locations.town));
+};
+
+export const saveHouse = async (seekerId: number, houseId: number) => {
+  return await db.insert(savedHouses).values({ seekerId, houseId }).onConflictDoNothing().returning();
+};
+
+export const removeSavedHouse = async (seekerId: number, houseId: number) => {
+  const result = await db.delete(savedHouses)
+    .where(and(eq(savedHouses.seekerId, seekerId), eq(savedHouses.houseId, houseId)))
+    .returning();
+  return result.length > 0;
+};
+
+export const listSavedHouses = async (seekerId: number) => {
+  const results = await db.query.savedHouses.findMany({
+    where: eq(savedHouses.seekerId, seekerId),
+    with: {
+      house: {
+        with: {
+          location: true,
+          images: { limit: 1 }
+        }
+      }
+    }
+  });
+  return results.map(r => r.house);
 };

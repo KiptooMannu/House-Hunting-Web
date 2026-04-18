@@ -90,8 +90,21 @@ export async function handleMpesaCallback(rawBody: any) {
   }
 
   if (resultCode === 0) {
-    logger.info('M-Pesa payment success. Processing audit trail.', { bookingId: existingBooking.bookingId });
-    
+    logger.info('M-Pesa payment success. Processing audit trail.', { bookingId: existingBooking.bookingId, receipt: mpesaReceiptNumber });
+
+    // IDEMPOTENCY CHECK: Ensure we haven't processed this receipt already
+    if (mpesaReceiptNumber) {
+      const [existingPayment] = await db.select()
+        .from(payments)
+        .where(eq(payments.mpesaReceiptNumber, mpesaReceiptNumber))
+        .limit(1);
+
+      if (existingPayment) {
+        logger.info('M-Pesa callback ignored: Receipt already processed (Idempotency confirmed)', { mpesaReceiptNumber });
+        return { success: true, message: 'Already processed', bookingId: existingBooking.bookingId };
+      }
+    }
+
     await db.transaction(async (trx) => {
       await trx.update(bookings)
         .set({ status: 'confirmed', confirmedAt: new Date() })
@@ -214,15 +227,21 @@ export async function confirmStripePayment(paymentIntentId: string, bookingId: n
       transactionReference: paymentIntent.id,
       paidAt: new Date(),
     });
-  });
 
-  // Trigger compliance auto-log (eTIMS)
-  try {
-    const { generateETIMSReceipt } = await import('../compliance/compliance.service.js');
-    await generateETIMSReceipt(bookingId);
-  } catch (e) {
-    console.warn('[Payments] Compliance auto-log failed:', e);
-  }
+    // Same pattern as M-Pesa flow – guarantees atomicity and resilience
+    const payload = {
+      bookingId,
+      totalRevenueKes: Number(booking.bookingFee),
+      totalBookingFees: 1500, // Matched with pricing engine
+      initiatedById: booking.seekerId,
+    };
+
+    await trx.insert(jobs).values({
+      type: 'kra_etims_sync',
+      payload: payload,
+      status: 'pending',
+    });
+  });
 
   return { success: true, bookingId };
 }

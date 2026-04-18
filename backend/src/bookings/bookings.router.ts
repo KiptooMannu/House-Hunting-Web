@@ -17,5 +17,6 @@ bookingsRouter.post('/', bookingController.createBooking);
 
 // Sensitive operations - restricted to Admin or Landlord
 bookingsRouter.put('/:bookingId', adminOrLandlordMiddleware, bookingController.updateBooking);
+bookingsRouter.put('/:bookingId/status', adminOrLandlordMiddleware, bookingController.updateBooking);
 bookingsRouter.delete('/:bookingId', adminOrLandlordMiddleware, bookingController.deleteBooking);
 bookingsRouter.post('/:bookingId/confirm', adminOrLandlordMiddleware, bookingController.confirmBooking);

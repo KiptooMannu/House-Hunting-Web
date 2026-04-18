@@ -89,10 +89,23 @@ async function seed() {
     const variation = (i % 10) * 10000;
     const rent = baseRent + variation;
 
+    // Mixed verification status for testing
+    let houseStatus: any = 'active';
+    let isVerified = true;
+    
+    if (i >= 10 && i < 20) {
+      houseStatus = 'pending_approval';
+      isVerified = false;
+    } else if (i >= 20) {
+      houseStatus = 'draft';
+      isVerified = false;
+    }
+
     houseData.push({
       landlordId: landlord.userId,
       locationId: loc.locationId,
       title: `${titles[i]} - ${loc.town}`,
+      bookingFee: '1500.00',
       description: `Premium ${titles[i]} offering unmatched luxury and comfort. Features high-end finishes, smart home tech, and panoramic views of ${loc.town}. Large windows allow for natural lighting, and the open-plan kitchen is perfect for gourmet cooking.`,
       houseType: ['bedsitter', 'one_bedroom', 'two_bedroom', 'three_bedroom', 'mansion', 'bungalow', 'studio'][i % 7] as any,
       furnishing: ['furnished', 'semi_furnished', 'unfurnished'][i % 3] as any,
@@ -104,10 +117,10 @@ async function seed() {
       isDepositNegotiable: i % 2 === 0,
       addressLine: `${100 + i} ${loc.neighborhood} Road, ${loc.town}`,
       amenities: JSON.stringify(['wifi', 'parking', 'gym', 'pool', 'security', 'elevator'].slice(0, (i % 6) + 1)),
-      status: 'active' as any,
-      isVerified: true,
-      verifiedById: landlords[0].userId,
-      verifiedAt: new Date(),
+      status: houseStatus,
+      isVerified: isVerified,
+      verifiedById: isVerified ? landlords[0].userId : null,
+      verifiedAt: isVerified ? new Date() : null,
     });
   }
 

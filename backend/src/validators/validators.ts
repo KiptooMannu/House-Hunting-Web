@@ -11,7 +11,7 @@ export const HouseTypeEnum = z.enum([
   'four_bedroom_plus', 'studio', 'bungalow', 'mansion'
 ]);
 export const FurnishingEnum = z.enum(['furnished', 'semi_furnished', 'unfurnished']);
-export const ListingStatusEnum = z.enum(['active', 'booked', 'unavailable', 'draft', 'removed']);
+export const ListingStatusEnum = z.enum(['active', 'booked', 'unavailable', 'draft', 'pending_approval', 'rejected', 'removed']);
 export const BookingStatusEnum = z.enum(['pending_payment', 'confirmed', 'cancelled', 'expired', 'rejected']);
 export const PaymentStatusEnum = z.enum(['pending', 'completed', 'failed', 'refunded']);
 export const PaymentMethodEnum = z.enum(['mpesa', 'bank_transfer', 'cash']);
@@ -21,7 +21,7 @@ export const ComplianceStatusEnum = z.enum(['pending', 'submitted', 'acknowledge
 export const AuditActionEnum = z.enum([
   'login', 'logout', 'register', 'create', 'update', 'delete',
   'password_reset', 'account_lock', 'account_activate', 'account_deactivate',
-  'booking_confirm', 'payment_received'
+  'booking_confirm', 'payment_received', 'house_approve'
 ]);
 
 // ============================================================
