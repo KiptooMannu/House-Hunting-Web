@@ -4,6 +4,7 @@ import { useGetProfileQuery, useUpdateProfileMutation } from '../../store/apiSli
 import { logout, setCredentials } from '../../store/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 
 export default function Settings() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -21,7 +22,6 @@ export default function Settings() {
     avatar: ''
   });
 
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     if (profile) {
@@ -36,13 +36,12 @@ export default function Settings() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage({ type: '', text: '' });
     try {
       const updatedUser = await updateProfile(form).unwrap();
       dispatch(setCredentials({ user: updatedUser.user, token: localStorage.getItem('token') || '' }));
-      setMessage({ type: 'success', text: 'Identity protocol updated successfully.' });
+      toast.success('Identity protocol updated successfully.');
     } catch (err: any) {
-      setMessage({ type: 'error', text: err?.data?.message || 'Failed to update discovery identity.' });
+      toast.error(err?.data?.message || 'Failed to update discovery identity.');
     }
   };
 
@@ -58,11 +57,6 @@ export default function Settings() {
         <p className="text-on-surface-variant mt-2 font-medium">Manage your identity, security protocols, and discovery preferences.</p>
       </header>
 
-      {message.text && (
-        <div className={`p-6 rounded-3xl border ${message.type === 'success' ? 'bg-secondary/10 border-secondary/20 text-secondary' : 'bg-red-50 border-red-100 text-red-600'} font-bold text-sm animate-in zoom-in-95`}>
-           {message.text}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
         <aside className="lg:col-span-4 space-y-6 text-left">

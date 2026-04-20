@@ -4,8 +4,11 @@ import { authMiddleware, adminOrLandlordMiddleware } from '../middleware/authMid
 
 export const paymentsRouter = new Hono();
 
-// Public callback (no auth)
+// Public callbacks (no auth)
 paymentsRouter.post('/mpesa/callback', paymentController.mpesaCallback);
+paymentsRouter.post('/mpesa/c2b/validation', paymentController.mpesaValidation);
+paymentsRouter.post('/mpesa/c2b/confirmation', paymentController.mpesaConfirmation);
+paymentsRouter.post('/stripe/webhook', paymentController.stripeWebhook);
 
 // All other routes require authentication
 paymentsRouter.use('*', authMiddleware);

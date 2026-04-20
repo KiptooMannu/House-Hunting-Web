@@ -222,8 +222,17 @@ export const approveHouse = async (houseId: number, adminId: number) => {
     type: 'success',
   });
 
+  // DISPATCH OUTBOUND WEBHOOK
+  const { dispatchWebhook } = await import('../payments/payments.service.js');
+  await dispatchWebhook('house.verified', {
+    houseId: updated.houseId,
+    title: updated.title,
+    landlordId: updated.landlordId,
+    verifiedAt: updated.verifiedAt
+  });
+
   return updated;
-};
+}
 
 export const rejectHouse = async (houseId: number, adminId: number, reason: string) => {
   const house = await db.query.houses.findFirst({ where: eq(houses.houseId, houseId) });

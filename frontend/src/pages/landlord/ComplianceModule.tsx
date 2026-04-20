@@ -16,8 +16,9 @@ export default function ComplianceModule() {
   const { data: profileData } = useGetProfileQuery({});
   const profile = profileData?.user ?? user;
 
-  // Real data wiring
-  const { data: revenueData } = useGetRevenueQuery({ landlordId: profile?.userId });
+  // Fetch revenue summary: isolated for landlords, global for admins
+  const revenueParams = profile?.role === 'landlord' ? { landlordId: profile?.userId } : {};
+  const { data: revenueData } = useGetRevenueQuery(revenueParams);
   const { data: housesData } = useGetHousesQuery({ landlordId: profile?.userId });
   
   const { data: logsData, isLoading: logsLoading } = useGetComplianceLogsQuery({});
@@ -46,6 +47,7 @@ export default function ComplianceModule() {
     try {
       const response = await verifyCompliance({
         kraPin: profile?.kraPin,
+        userId: profile?.userId,
       }).unwrap() as any;
 
       if (response.valid) {

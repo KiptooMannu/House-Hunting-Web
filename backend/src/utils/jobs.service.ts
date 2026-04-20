@@ -2,6 +2,7 @@ import { db } from '../db/db.js';
 import { jobs } from '../db/schema.js';
 import { eq, lt, and, sql } from 'drizzle-orm';
 import logger from './logger.js';
+import crypto from 'crypto';
 
 export interface JobPayload {
   [key: string]: any;
@@ -49,6 +50,26 @@ const processJob = async (job: any) => {
     if (job.type === 'kra_etims_sync') {
       const { sendRevenueToGava } = await import('../compliance/compliance.service.js');
       await sendRevenueToGava(job.payload);
+    } else if (job.type === 'webhook_dispatch') {
+      const { url, secret, eventType, data, timestamp } = job.payload;
+      
+      const body = JSON.stringify({ eventType, data, timestamp });
+      const signature = crypto.createHmac('sha256', secret).update(body).digest('hex');
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-HouseHunt-Signature': signature,
+          'X-HouseHunt-Event': eventType
+        },
+        body
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook failed with status ${response.status}`);
+      }
+      logger.info(`Webhook ${eventType} dispatched to ${url}`);
     }
     
     // Mark as completed

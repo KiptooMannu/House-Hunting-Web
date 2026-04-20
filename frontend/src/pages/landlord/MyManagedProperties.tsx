@@ -4,13 +4,14 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { formatCurrency, getHouseImage } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 export default function MyManagedProperties() {
   const { user } = useSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
   
   // 1. Fetch only MY managed assets
-  const { data: ownedData, isLoading: loadingOwned } = useGetHousesQuery({ 
+  const { data: ownedData, isLoading: loadingOwned, refetch } = useGetHousesQuery({ 
     landlordId: user?.userId,
     limit: 50 
   }, { skip: !user?.userId });
@@ -32,9 +33,10 @@ export default function MyManagedProperties() {
     if (window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
       try {
         await deleteHouse(houseId).unwrap();
-      } catch (err) {
-        console.error('Failed to delete house', err);
-        alert('Failed to delete property. It might have active bookings.');
+        toast.success('Property node decommissioned successfully.');
+        refetch();
+      } catch (err: any) {
+        toast.error(err?.data?.message || 'Failed to delete property. It might have active bookings.');
       }
     }
   };

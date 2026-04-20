@@ -62,7 +62,7 @@ export const loginService = async (email: string, password: string) => {
   console.log('📊 [loginService] User query result:', user ? `Found user ${user.userId}` : 'User not found');
   if (!user || !user.auth) {
     console.log('❌ [loginService] User or auth record missing');
-    throw new Error('Invalid email or password');
+    throw new Error('wrong password or username please try again');
   }
 
   console.log('👤 [loginService] User status:', user.accountStatus);
@@ -100,7 +100,7 @@ export const loginService = async (email: string, password: string) => {
       console.log(`🔒 [loginService] Account locked for ${LOCK_DURATION_MINUTES} minutes`);
       throw new Error(`Account locked for ${LOCK_DURATION_MINUTES} minutes after too many failed attempts`);
     }
-    throw new Error('Invalid email or password');
+    throw new Error('wrong password or username please try again');
   }
 
   // Successful login - reset attempts

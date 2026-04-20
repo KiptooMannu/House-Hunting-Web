@@ -31,7 +31,7 @@ export const getLog = async (c: Context) => {
 
 export const listLogs = async (c: Context) => {
   try {
-    const role = c.get('role'); // userRole is stored as 'role' in authMiddleware
+    const role = c.get('userRole'); 
     const userId = c.get('userId');
     const landlordId = role === 'landlord' ? userId : undefined;
     const logs = await complianceService.listLogs(landlordId);

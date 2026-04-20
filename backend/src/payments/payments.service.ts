@@ -139,12 +139,88 @@ export async function handleMpesaCallback(rawBody: any) {
     });
 
     logger.info('M-Pesa payment processed and eTIMS job enqueued', { bookingId: existingBooking.bookingId });
+
+    // DISPATCH OUTBOUND WEBHOOK
+    await dispatchWebhook('payment.succeeded', {
+      bookingId: existingBooking.bookingId,
+      amount: amount || existingBooking.bookingFee,
+      receipt: mpesaReceiptNumber,
+      gateway: 'mpesa_stk'
+    });
+
     return { success: true, bookingId: existingBooking.bookingId };
   } else {
-    logger.warn('M-Pesa payment rejected', { bookingId: existingBooking.bookingId, resultDesc });
-    await db.delete(bookings).where(eq(bookings.bookingId, existingBooking.bookingId));
     return { success: false, message: resultDesc };
   }
+}
+
+export async function handleMpesaC2BConfirmation(payload: any) {
+  const { TransID, TransAmount, BillRefNumber, MSISDN } = payload;
+  logger.info('M-Pesa C2B Confirmation received', { TransID, BillRefNumber });
+
+  // 1. Resolve booking ID from BillRefNumber (e.g., "BOOK-65" or just "65")
+  const bookingId = parseInt(BillRefNumber.replace(/\D/g, ''));
+  if (!bookingId) {
+    logger.warn('M-Pesa C2B Confirmation: Invalid BillRefNumber', { BillRefNumber });
+    return;
+  }
+
+  const [booking] = await db.select().from(bookings).where(eq(bookings.bookingId, bookingId)).limit(1);
+  if (!booking) {
+    logger.warn('M-Pesa C2B Confirmation: Booking not found', { bookingId });
+    return;
+  }
+
+  // IDEMPOTENCY CHECK
+  const [existingPayment] = await db.select()
+    .from(payments)
+    .where(eq(payments.mpesaReceiptNumber, TransID))
+    .limit(1);
+
+  if (existingPayment) {
+    logger.info('M-Pesa C2B callback ignored: Receipt already processed', { TransID });
+    return;
+  }
+
+  await db.transaction(async (trx) => {
+    await trx.update(bookings)
+      .set({ status: 'confirmed', confirmedAt: new Date() })
+      .where(eq(bookings.bookingId, bookingId));
+
+    await trx.insert(payments).values({
+      bookingId,
+      payerId: booking.seekerId,
+      amount: TransAmount.toString(),
+      method: 'mpesa',
+      status: 'completed',
+      mpesaReceiptNumber: TransID,
+      mpesaPhoneNumber: MSISDN,
+      paidAt: new Date(),
+    });
+
+    const compliancePayload = {
+      bookingId,
+      totalRevenueKes: Number(TransAmount),
+      totalBookingFees: 1500,
+      initiatedById: booking.seekerId,
+    };
+
+    await trx.insert(jobs).values({
+      type: 'kra_etims_sync',
+      payload: compliancePayload,
+      status: 'pending',
+    });
+  });
+
+  logger.info('M-Pesa C2B processed successfully', { bookingId, TransID });
+  
+  // DISPATCH OUTBOUND WEBHOOK
+  await dispatchWebhook('payment.succeeded', {
+    bookingId,
+    amount: TransAmount,
+    receipt: TransID,
+    gateway: 'mpesa_c2b'
+  });
 }
 
 // ========== STRIPE FLOW ==========
@@ -243,7 +319,122 @@ export async function confirmStripePayment(paymentIntentId: string, bookingId: n
     });
   });
 
+  // DISPATCH OUTBOUND WEBHOOK
+  await dispatchWebhook('payment.succeeded', {
+    bookingId,
+    amount: paymentIntent.amount / 100,
+    receipt: paymentIntent.id,
+    gateway: 'stripe_manual'
+  });
+
   return { success: true, bookingId };
+}
+
+export async function handleStripeWebhook(payload: string, signature: string) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    logger.error('STRIPE_WEBHOOK_SECRET is not set');
+    throw new Error('Webhook secret missing');
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+  } catch (err: any) {
+    logger.error('Stripe webhook signature verification failed', { error: err.message });
+    throw new Error(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+    const bookingId = parseInt(paymentIntent.metadata.bookingId);
+
+    if (!bookingId) {
+      logger.warn('Stripe webhook received for PI without bookingId metadata', { pi: paymentIntent.id });
+      return;
+    }
+
+    // IDEMPOTENCY CHECK
+    const [existingPayment] = await db.select()
+      .from(payments)
+      .where(eq(payments.transactionReference, paymentIntent.id))
+      .limit(1);
+
+    if (existingPayment) {
+      logger.info('Stripe webhook ignored: Transaction already processed', { pi: paymentIntent.id });
+      return;
+    }
+
+    const [booking] = await db.select().from(bookings).where(eq(bookings.bookingId, bookingId)).limit(1);
+    if (!booking) {
+      logger.error('Stripe webhook: booking not found', { bookingId });
+      return;
+    }
+
+    await db.transaction(async (trx) => {
+      await trx.update(bookings)
+        .set({ status: 'confirmed', confirmedAt: new Date() })
+        .where(eq(bookings.bookingId, bookingId));
+
+      await trx.insert(payments).values({
+        bookingId,
+        payerId: booking.seekerId,
+        amount: booking.bookingFee,
+        method: 'card',
+        status: 'completed',
+        transactionReference: paymentIntent.id,
+        paidAt: new Date(),
+      });
+
+      // Transactional Outbox
+      const compliancePayload = {
+        bookingId,
+        totalRevenueKes: Number(booking.bookingFee),
+        totalBookingFees: 1500,
+        initiatedById: booking.seekerId,
+      };
+
+      await trx.insert(jobs).values({
+        type: 'kra_etims_sync',
+        payload: compliancePayload,
+        status: 'pending',
+      });
+    });
+
+    logger.info('Stripe webhook processed successfully', { bookingId, pi: paymentIntent.id });
+
+    // DISPATCH OUTBOUND WEBHOOK
+    await dispatchWebhook('payment.succeeded', {
+      bookingId,
+      amount: booking.bookingFee,
+      receipt: paymentIntent.id,
+      gateway: 'stripe'
+    });
+  }
+}
+
+// ========== WEBHOOK DISPATCHER ==========
+import { webhooks } from '../db/schema.js';
+import { and } from 'drizzle-orm';
+
+export async function dispatchWebhook(eventType: string, payload: any) {
+  const activeHooks = await db.select()
+    .from(webhooks)
+    .where(and(eq(webhooks.eventType, eventType), eq(webhooks.isActive, true)));
+
+  for (const hook of activeHooks) {
+    await db.insert(jobs).values({
+      type: 'webhook_dispatch',
+      payload: {
+        url: hook.url,
+        secret: hook.secret,
+        eventType,
+        data: payload,
+        timestamp: new Date().toISOString()
+      },
+      status: 'pending'
+    });
+  }
 }
 
 // ========== STATUS POLLING (unchanged, but ensure it returns correct amount) ==========

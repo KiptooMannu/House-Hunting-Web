@@ -1183,6 +1183,32 @@ HouseHunt-KE/
 
 ---
 
+---
+
+## 8. Admin Property Verification Flow
+
+```mermaid
+flowchart TD
+    A["Landlord creates listing"] --> B["Status: pending_approval"]
+    B --> C["Visible only to Admin & Owning Landlord"]
+    C --> D["Admin Reviews Queue"]
+    
+    D --> E{Action?}
+    E -->|Approve| F["Status: active\nisVerified: true"]
+    E -->|Reject| G["Status: rejected\nNotify Landlord w/ Reason"]
+    E -->|Revoke| H["Status: pending_approval\n(Back to queue)"]
+    
+    F --> I["House live in Seeker feed"]
+    F --> J["Audit Log entry: house_approve"]
+    F --> K["Notification: Property Approved! 🎉"]
+    
+    style F fill:#f0fdf4,stroke:#16a34a
+    style G fill:#fef2f2,stroke:#dc2626
+    style H fill:#fff7ed,stroke:#ea580c
+```
+
+---
+
 ## Summary
 
 | What | Result |
@@ -1190,5 +1216,6 @@ HouseHunt-KE/
 | **Compliance flow verified** | ✅ All 12 checkpoints pass |
 | **Bug found & fixed** | Stripe path now uses Transactional Outbox (same as M-Pesa) |
 | **Test file fixed** | Removed duplicate drizzle-orm import |
-| **Flowcharts created** | 5 diagrams covering payments→KRA, cancellation, architecture, ERD, RBAC |
+| **Admin Verification Flow** | ✅ Verified approval/rejection logic & notifications |
+| **Flowcharts created** | 6 diagrams covering payments→KRA, cancellation, architecture, ERD, RBAC, verification |
 | **Project map** | Full file-level breakdown with module descriptions |

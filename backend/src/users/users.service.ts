@@ -17,7 +17,18 @@ const columnMap: Record<string, string> = {
 };
 
 export const createUser = async (data: any) => {
-  const { password, ...userData } = data;
+  const { password, email, phone, ...userData } = data;
+
+  // UNIQUE CHECKS
+  if (email) {
+    const existingEmail = await db.query.users.findFirst({ where: eq(users.email, email.trim().toLowerCase()) });
+    if (existingEmail) throw new Error('A user with this email is already registered. Please login instead.');
+  }
+
+  if (phone) {
+    const existingPhone = await db.query.users.findFirst({ where: eq(users.phone, phone) });
+    if (existingPhone) throw new Error('This phone number is already in use. Please use a different one.');
+  }
   
   let passwordHash: string;
   let isTemporary = false;
@@ -31,7 +42,7 @@ export const createUser = async (data: any) => {
     isTemporary = true;
   }
 
-  const [newUser] = await db.insert(users).values(userData).returning();
+  const [newUser] = await db.insert(users).values({ ...userData, email, phone }).returning();
   
   await db.insert(auth).values({ 
     userId: newUser.userId, 

@@ -2,7 +2,7 @@ const axios = require('axios');
 
 async function testLogin() {
   const credentials = {
-    email: 'admin@example.com',
+    email: 'admin@test.com',
     password: 'Admin@123'
   };
 
@@ -14,7 +14,7 @@ async function testLogin() {
     const startTime = Date.now();
     const response = await axios.post('http://localhost:3000/api/auth/login', credentials);
     const endTime = Date.now();
-    
+
     console.log('✅ LOGIN SUCCESS!');
     console.log('Time:', endTime - startTime, 'ms');
     console.log('Status Code:', response.status);

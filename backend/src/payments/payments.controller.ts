@@ -61,8 +61,14 @@ export const deletePayment = async (c: Context) => {
 
 export const getRevenue = async (c: Context) => {
   try {
-    const landlordId = c.req.query('landlordId') ? parseInt(c.req.query('landlordId')!) : undefined;
-    const result = await paymentService.getRevenue(landlordId);
+    const role = c.get('userRole');
+    const userId = c.get('userId');
+    const qLandlordId = c.req.query('landlordId') ? parseInt(c.req.query('landlordId')!) : undefined;
+    
+    // Landlords can only see their own revenue
+    const effectiveLandlordId = role === 'landlord' ? userId : qLandlordId;
+    
+    const result = await paymentService.getRevenue(effectiveLandlordId);
     return c.json({ data: result }, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -102,6 +108,21 @@ export const mpesaCallback = async (c: Context) => {
   }
 };
 
+export const mpesaValidation = async (c: Context) => {
+  return c.json({ ResultCode: 0, ResultDesc: 'Accepted' }, 200);
+};
+
+export const mpesaConfirmation = async (c: Context) => {
+  try {
+    const rawBody = await c.req.json();
+    await paymentService.handleMpesaC2BConfirmation(rawBody);
+    return c.json({ ResultCode: 0, ResultDesc: 'Success' }, 200);
+  } catch (error: any) {
+    console.error('C2B Confirmation error:', error);
+    return c.json({ ResultCode: 1, ResultDesc: error.message }, 200);
+  }
+};
+
 // ========== Stripe endpoints ==========
 export const createStripeIntent = async (c: Context) => {
   try {
@@ -128,6 +149,21 @@ export const confirmStripePayment = async (c: Context) => {
     return c.json(result, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
+  }
+};
+
+export const stripeWebhook = async (c: Context) => {
+  try {
+    const signature = c.req.header('stripe-signature');
+    if (!signature) return c.json({ error: 'Missing signature' }, 400);
+
+    const rawBody = await c.req.text();
+    await paymentService.handleStripeWebhook(rawBody, signature);
+    
+    return c.json({ received: true }, 200);
+  } catch (error: any) {
+    console.error('Stripe webhook error:', error);
+    return c.json({ error: error.message }, 400);
   }
 };
 

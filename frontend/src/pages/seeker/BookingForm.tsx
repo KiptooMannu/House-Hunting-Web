@@ -11,6 +11,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { toast } from 'react-hot-toast';
 
 // Safely load Stripe – show error if key missing
 const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
@@ -99,11 +100,11 @@ export default function BookingForm() {
   // M-Pesa payment initiation
   const handleMpesaPay = async () => {
     if (!phone) {
-      alert('Please enter your M-Pesa phone number');
+      toast.error('Please enter your M-Pesa phone number');
       return;
     }
     if (!canProceed) {
-      alert('Booking fee not set. Please contact the landlord.');
+      toast.error('Booking fee not set. Please contact the landlord.');
       return;
     }
     try {
@@ -117,20 +118,21 @@ export default function BookingForm() {
       
       const data = resp.data || resp;
       if (data.checkoutRequestId) {
+        toast.success('Payment initiated. Check your phone for the STK push.');
         navigate(`/payment_status?checkoutId=${data.checkoutRequestId}`);
       } else {
-        alert('Payment initiation failed: ' + (data.error || 'Unknown error'));
+        toast.error('Payment initiation failed: ' + (data.error || 'Unknown error'));
       }
     } catch (err: any) {
       console.error(err);
-      alert(err?.data?.error || err?.data?.message || 'Network error. Please try again.');
+      toast.error(err?.data?.error || err?.data?.message || 'Network error. Please try again.');
     }
   };
 
   // Card payment: create Stripe PaymentIntent
   const handleCardPay = async () => {
     if (!canProceed) {
-      alert('Booking fee not set. Please contact the landlord.');
+      toast.error('Booking fee not set. Please contact the landlord.');
       return;
     }
     try {
@@ -143,22 +145,24 @@ export default function BookingForm() {
       
       const data = resp.data || resp;
       if (data.clientSecret) {
+        toast.success('Secure payment connection established.');
         setStripeClientSecret(data.clientSecret);
         setStripeBookingId(data.bookingId);
       } else {
-        alert('Payment intent creation failed: ' + (data.error || 'Unknown error'));
+        toast.error('Payment intent creation failed: ' + (data.error || 'Unknown error'));
       }
     } catch (err: any) {
       console.error(err);
-      alert(err?.data?.error || err?.data?.message || 'Network error. Please try again.');
+      toast.error(err?.data?.error || err?.data?.message || 'Network error. Please try again.');
     }
   };
 
   const onCardSuccess = () => {
+    toast.success('Payment processed successfully!');
     navigate('/payment_status?bookingId=' + stripeBookingId);
   };
   const onCardError = (msg: string) => {
-    alert('Payment failed: ' + msg);
+    toast.error('Payment failed: ' + msg);
     setStripeClientSecret(null);
   };
 

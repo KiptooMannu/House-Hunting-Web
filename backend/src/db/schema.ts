@@ -539,6 +539,20 @@ export const jobs = pgTable('jobs', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// 12. WEBHOOK CONFIGS (Outbound)
+export const webhooks = pgTable('webhooks', {
+  webhookId: serial('webhook_id').primaryKey(),
+  url: text('url').notNull(),
+  secret: varchar('secret', { length: 255 }).notNull(),
+  eventType: varchar('event_type', { length: 100 }).notNull(), // e.g., 'payment.succeeded', 'house.verified'
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type TSWebhooks = InferSelectModel<typeof webhooks>;
+export type TIWebhooks = InferInsertModel<typeof webhooks>;
+
 export type TSComplianceLogs = InferSelectModel<typeof complianceLogs>;
 export type TIComplianceLogs = InferInsertModel<typeof complianceLogs>;
 export type TSAuditLogs = InferSelectModel<typeof auditLogs>;
