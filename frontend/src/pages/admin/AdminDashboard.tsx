@@ -35,6 +35,7 @@ export default function AdminDashboard() {
     { id: 'landlords', label: 'Landlord Registry', icon: 'group' },
     { id: 'seekers', label: 'Citizen Registry', icon: 'person_search' },
     { id: 'compliance', label: 'Gava Compliance', icon: 'verified_user' },
+    { id: 'webhooks', label: 'Webhook Bridges', icon: 'hub' },
     { id: 'audit', label: 'Audit Logs', icon: 'assignment_late' },
   ];
 

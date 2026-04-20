@@ -30,17 +30,10 @@ export const createUser = async (data: any) => {
     if (existingPhone) throw new Error('This phone number is already in use. Please use a different one.');
   }
   
-  let passwordHash: string;
-  let isTemporary = false;
-  let tempPwd;
-
-  if (password) {
-    passwordHash = await bcrypt.hash(password, 12);
-  } else {
-    tempPwd = generateTempPassword();
-    passwordHash = await bcrypt.hash(tempPwd, 12);
-    isTemporary = true;
-  }
+  // All registrations now use permanent passwords by default
+  const actualPassword = password || generateTempPassword();
+  const passwordHash = await bcrypt.hash(actualPassword, 12);
+  const isTemporary = false; 
 
   const [newUser] = await db.insert(users).values({ ...userData, email, phone }).returning();
   
@@ -52,7 +45,7 @@ export const createUser = async (data: any) => {
 
   return { 
     user: newUser, 
-    temporaryPassword: tempPwd 
+    password: actualPassword // Return the password (provided or generated)
   };
 };
 

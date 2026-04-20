@@ -365,6 +365,35 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['Notification'],
     }),
+    
+    // Webhook Management
+    getWebhooks: builder.query<any, void>({
+      query: () => '/webhooks',
+      providesTags: ['Webhook' as any],
+    }),
+    createWebhook: builder.mutation<any, any>({
+      query: (data) => ({
+        url: '/webhooks',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Webhook' as any],
+    }),
+    updateWebhook: builder.mutation<any, { webhookId: number; updates: any }>({
+      query: ({ webhookId, updates }) => ({
+        url: `/webhooks/${webhookId}`,
+        method: 'PUT',
+        body: updates,
+      }),
+      invalidatesTags: ['Webhook' as any],
+    }),
+    deleteWebhook: builder.mutation<any, number>({
+      query: (webhookId) => ({
+        url: `/webhooks/${webhookId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Webhook' as any],
+    }),
   }),
 });
 
@@ -412,4 +441,8 @@ export const {
   useGetNotificationsQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
+  useGetWebhooksQuery,
+  useCreateWebhookMutation,
+  useUpdateWebhookMutation,
+  useDeleteWebhookMutation,
 } = apiSlice;

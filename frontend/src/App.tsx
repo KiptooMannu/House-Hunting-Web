@@ -53,6 +53,7 @@ import AuditLogs from './pages/admin/AuditLogs';
 import AdminCompliance from './pages/admin/AdminCompliance';
 import SeekerDirectory from './pages/admin/SeekerDirectory';
 import AdminSettings from './pages/admin/AdminSettings';
+import WebhookManagement from './pages/admin/WebhookManagement';
 
 export default function App() {
   const { pathname } = useLocation();
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="seekers" element={<SeekerDirectory />} />
             <Route path="audit" element={<AuditLogs />} />
             <Route path="compliance" element={<AdminCompliance />} />
+            <Route path="webhooks" element={<WebhookManagement />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
           <Route

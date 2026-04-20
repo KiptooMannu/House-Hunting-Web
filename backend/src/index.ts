@@ -13,6 +13,7 @@ import { complianceLogsRouter } from './compliance/compliance.router.js';
 import { auditLogsRouter } from './audit_logs/audit_logs.router.js';
 import { analyticsRouter } from './analytics/analytics.router.js';
 import { notificationsRouter } from './notifications/notifications.router.js';
+import { webhooksRouter } from './webhooks/webhooks.router.js';
 import { cors } from 'hono/cors';
 import { runWorker } from './utils/jobs.service.js';
 
@@ -44,6 +45,7 @@ app.route('/api/compliance', complianceLogsRouter);
 app.route('/api/audit-logs', auditLogsRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/notifications', notificationsRouter);
+app.route('/api/webhooks', webhooksRouter);
 
 // 404 handler
 app.notFound((c) => c.json({ error: 'Route not found' }, 404));
