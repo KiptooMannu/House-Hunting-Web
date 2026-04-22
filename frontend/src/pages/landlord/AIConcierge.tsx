@@ -4,10 +4,14 @@ import { useSendMessageMutation } from '../../store/apiSlice';
 
 export default function AIConcierge() {
   const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  
   const [messages, setMessages] = useState<{ role: string; text: string; time: string; isThinking?: boolean }[]>([
     { 
       role: 'bot', 
-      text: `Greetings, curated investor. I have analyzed your portfolio performance against the current Savanna Ridge development. Your current liquidity is optimally positioned for a high-authority acquisition. Shall we review my top three refined selections?`,
+      text: `Greetings, ${user?.fullName || 'Landlord'}. I am your Fintech Compliance Assistant. I have analyzed your linked KRA PIN and recent M-Pesa transaction history. Your current status is active and compliant. 
+
+How can I assist you with your financial transactions, tax status, or KRA submissions today?`,
       time: '9:41 AM'
     }
   ]);
@@ -39,7 +43,7 @@ export default function AIConcierge() {
     setMessages(prev => [...prev, userMsg]);
     
     try {
-      const res = await sendChatMessage({ message: text }).unwrap();
+      const res = await sendChatMessage({ message: text, persona: 'compliance' }).unwrap();
       const botMsg = { 
         role: 'bot', 
         text: res.data?.reply || res.reply || "Analysis complete. I've updated your discovery canvas with new projections.",

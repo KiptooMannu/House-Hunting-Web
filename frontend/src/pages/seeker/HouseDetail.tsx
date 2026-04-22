@@ -6,6 +6,7 @@ import type { RootState } from '../../store';
 import { useGetHouseByIdQuery, useUpdateHouseMutation, useDeleteHouseMutation } from '../../store/apiSlice';
 import { formatCurrency, getHouseImage } from '../../utils/helpers';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 import {
   Dialog,
@@ -65,6 +66,12 @@ export default function HouseDetail() {
       navigate('/login');
       return;
     }
+    
+    // 🛡️ [Security] Restriction: Only seekers can initiate new booking protocols.
+    if (user.role === 'admin' || user.role === 'landlord') {
+      toast.error('Authority Node Detected. Bookings are reserved for Seeker accounts only.');
+      return;
+    }
     navigate(`/book/${house.houseId}`, {
       state: {
         startDate: bookingDate,
@@ -81,9 +88,10 @@ export default function HouseDetail() {
     if (!window.confirm("Are you sure you want to delete this listing? This action cannot be undone.")) return;
     try {
       await deleteHouse(houseId).unwrap();
+      toast.success('Asset decommissioned correctly.');
       navigate('/landlord/overview');
     } catch (err: any) {
-      alert(err?.data?.message || "Failed to delete listing.");
+      toast.error(err?.data?.message || "Failed to delete listing.");
     }
   };
 
@@ -163,12 +171,12 @@ export default function HouseDetail() {
       </section>
 
       {/* Main Content & Sidebar */}
-      <section className="max-w-screen-2xl mx-auto px-8 mt-16 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-16 text-left">
+      <section className="max-w-screen-2xl mx-auto px-4 md:px-8 mt-16 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-16 text-left">
 
         {/* Left Column: Content (unchanged) */}
         <div className="col-span-1 lg:col-span-8 text-left">
           {/* Key Stats Bar */}
-          <div className="bg-surface-container-low p-10 rounded-[2.5rem] flex flex-wrap justify-between items-center mb-16 shadow-inner border border-slate-100">
+          <div className="bg-surface-container-low p-6 md:p-10 rounded-[2.5rem] flex flex-wrap justify-between items-center mb-16 shadow-inner border border-slate-100 gap-6 md:gap-0">
             <div className="flex flex-col mb-4 md:mb-0 text-left">
               <span className="text-on-surface-variant text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">Valuation</span>
               <span className="text-4xl font-black text-primary tracking-tighter font-headline">{formatCurrency(house.monthlyRent)}<span className="text-sm font-medium ml-1">/mo</span></span>
@@ -235,13 +243,13 @@ export default function HouseDetail() {
           {/* Neighborhood */}
           <div className="mb-20 text-left">
             <h3 className="text-[11px] font-black mb-10 uppercase tracking-[0.3em] text-on-surface-variant opacity-60">Neighborhood Insights: {house.location?.county || 'Riverside'}</h3>
-            <div className="rounded-[3rem] overflow-hidden h-[500px] relative group shadow-2xl border-8 border-white ring-1 ring-slate-200 text-left">
+            <div className="rounded-[2rem] md:rounded-[3rem] overflow-hidden h-[400px] md:h-[500px] relative group shadow-2xl border-[4px] md:border-8 border-white ring-1 ring-slate-200 text-left">
               <img
                 className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-1000"
                 src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80"
                 alt="Map Visualization"
               />
-              <div className="absolute top-8 left-8 bg-white/95 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-2xl max-w-xs border border-slate-100 text-left">
+              <div className="absolute top-4 md:top-8 left-4 md:left-8 bg-white/95 backdrop-blur-xl p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-xs border border-slate-100 text-left">
                 <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-6 border-b border-primary/10 pb-4">Local Highlights</p>
                 <ul className="space-y-5 text-left">
                   <li className="text-sm font-bold flex items-center gap-4 text-on-surface-variant group"><span className="w-2.5 h-2.5 rounded-full bg-secondary group-hover:scale-150 transition-transform"></span> Westlands Core (5 min)</li>
@@ -366,13 +374,22 @@ export default function HouseDetail() {
 
               <button
                 onClick={handleProceedToBooking}
-                className="w-full bg-gradient-to-br from-primary via-primary to-primary-container text-white py-10 rounded-full font-black text-xl shadow-2xl shadow-primary/20 transition-all transform hover:scale-[1.03] active:scale-[0.98] mb-10 flex flex-col items-center justify-center gap-1 border-none relative overflow-hidden group"
+                disabled={user?.role === 'admin' || user?.role === 'landlord'}
+                className={`w-full py-10 rounded-full font-black text-xl shadow-2xl transition-all transform hover:scale-[1.03] active:scale-[0.98] mb-10 flex flex-col items-center justify-center gap-1 border-none relative overflow-hidden group ${
+                  (user?.role === 'admin' || user?.role === 'landlord') 
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed grayscale' 
+                    : 'bg-gradient-to-br from-primary via-primary to-primary-container text-white shadow-primary/20'
+                }`}
               >
                 <div className="flex items-center gap-4 relative z-10">
-                  <span>Initiate Booking</span>
-                  <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">send_to_mobile</span>
+                  <span>{(user?.role === 'admin' || user?.role === 'landlord') ? 'Access Restricted' : 'Initiate Booking'}</span>
+                  <span className="material-symbols-outlined relative z-10 group-hover:translate-x-2 transition-transform">
+                    {(user?.role === 'admin' || user?.role === 'landlord') ? 'lock' : 'send_to_mobile'}
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">Verified Protocol</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 relative z-10">
+                  {(user?.role === 'admin' || user?.role === 'landlord') ? 'Authority Node Bypass Disabled' : 'Verified Protocol'}
+                </span>
               </button>
 
               <div className="space-y-6 border-t border-slate-100 pt-10 text-left">

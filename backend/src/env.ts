@@ -6,10 +6,11 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   PORT: z.string().default('3000'),
   KRA_PIN: z.string().min(11),
-  KRA_APIGEE_APP_ID: z.string().uuid(),
+  KRA_APIGEE_APP_ID: z.string().min(5),
   KRA_SANDBOX_URL: z.string().url(),
   STRIPE_SECRET_KEY: z.string().startsWith('sk_'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

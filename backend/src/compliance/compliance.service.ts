@@ -109,12 +109,20 @@ export const sendRevenueToGava = async (rawPayload: RevenueReportPayload) => {
       apiRequestId = kraData.transactionId || `req_${Date.now()}_eTIMS_SANDBOX`;
       kraResponseStatus = 'submitted_sandbox';
     } else {
-      logger.warn('KRA Edge rejected payload', { status: kraReq.status, bookingId: payload.bookingId });
+      logger.warn('KRA Edge rejected payload - Handing off to Offline Queue', { status: kraReq.status, bookingId: payload.bookingId });
       kraResponseStatus = 'queued_locally';
+      
+      // 🚀 ACTIVATE OFFLINE PIPELINE
+      const { enqueueJob } = await import('../utils/jobs.service.js');
+      await enqueueJob('kra_etims_sync', payload);
     }
   } catch (err: any) {
-    logger.error('Network/Connectivity Failure during eTIMS sync', { error: err.message, bookingId: payload.bookingId });
+    logger.error('Network Failure - Enqueueing for Retry', { error: err.message, bookingId: payload.bookingId });
     kraResponseStatus = 'offline_sync_pending';
+    
+    // 🚀 ACTIVATE OFFLINE PIPELINE
+    const { enqueueJob } = await import('../utils/jobs.service.js');
+    await enqueueJob('kra_etims_sync', payload);
   }
 
   const financialNotes = JSON.stringify({
@@ -149,7 +157,7 @@ export const sendRevenueToGava = async (rawPayload: RevenueReportPayload) => {
     success: true,
     message: kraResponseStatus === 'submitted_sandbox' 
       ? 'Successfully generated KRA Sandbox eTIMS Receipt' 
-      : 'Revenue logged locally for offline KRA sync',
+      : 'Revenue logged and added to Offline Retry Pipeline',
     logId: log.logId,
     transactionId: log.gavaConnectRequestId,
     taxBreakdown: { mriTaxCalculated, vatCalculated }
@@ -158,6 +166,24 @@ export const sendRevenueToGava = async (rawPayload: RevenueReportPayload) => {
 
 export const submitNilFiling = async (payload: { periodStart?: string, periodEnd?: string, initiatedById: number }) => {
   const { periodStart, periodEnd, initiatedById } = payload;
+  
+  // 1. DUPLICATE PREVENTION: Check if already filed for this month
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0,0,0,0);
+
+  const existingLog = await db.query.complianceLogs.findFirst({
+    where: (logs, { and, eq, gte }) => and(
+      eq(logs.action, 'nil_filing'),
+      eq(logs.status, 'submitted'),
+      gte(logs.createdAt, startOfMonth)
+    )
+  });
+
+  if (existingLog) {
+    logger.warn('Duplicate NIL filing attempted', { initiatedById });
+    throw new Error('NIL Filing for this period already exists in the registry.');
+  }
   
   logger.info('Executing Nil Filing process', { periodStart, periodEnd, initiatedById });
   
@@ -218,8 +244,8 @@ export const generateETIMSReceipt = async (bookingId: number) => {
     const payload = {
       periodStart: new Date().toISOString(),
       periodEnd: new Date().toISOString(),
-      totalRevenueKes: Number(booking.bookingFee),
-      totalBookingFees: 1500, // Matched with pricing engine minimum
+      totalRevenueKes: Number(booking.totalPrice) - Number(booking.bookingFee),
+      totalBookingFees: Number(booking.bookingFee), 
       bookingId: booking.bookingId,
       initiatedById: booking.seekerId
     };
@@ -329,14 +355,38 @@ export const verifyCompliance = async (payload: { kraPin: string; userId: number
   }
 
   // 2. Regulatory Standing Check (Simulated KRA Sandbox)
-  // In a real environment, this hits the Get TCC / PIN status endpoint
-  const kraValid = true; 
+  // Standard KRA PIN Format: AXXXXXXXXXY (11 chars)
+  const kraRegex = /^[A|P][0-9]{9}[A-Z]$/i;
+  const kraValid = kraRegex.test(kraPin); 
+
   if (!kraValid) {
-    return { valid: false, reason: 'KRA PIN is invalid or inactive according to national registry.' };
+    // 3a. FRAUD FLAG ACTIVATION
+    await db.update(users)
+      .set({ 
+        accountStatus: 'rejected', 
+        kraPin: kraPin,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.userId, userId));
+
+    // Log the Violation
+    await db.insert(auditLogs).values({
+      action: 'account_lock',
+      performedById: adminId,
+      tableName: 'users',
+      recordId: userId.toString(),
+      newValues: JSON.stringify({ accountStatus: 'rejected', kraPin, violation: 'FRAUDULENT_KRA_FORMAT' }),
+      notes: `Compliance Violation: Landlord ${user.fullName} provided an invalid KRA PIN format.`
+    } as any);
+
+    return { 
+      valid: false, 
+      reason: 'KRA PIN format is invalid. Account has been flagged for fraud review.',
+      details: { status: 'REJECTED_FRAUD' }
+    };
   }
 
-  // 3. SECURE ACTIVATION
-  // Update the user to 'active' status and save/confirm the KRA PIN
+  // 3b. SECURE ACTIVATION (If valid)
   await db.update(users)
     .set({ 
       accountStatus: 'active', 

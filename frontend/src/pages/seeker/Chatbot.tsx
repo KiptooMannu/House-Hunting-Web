@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import toast from 'react-hot-toast';
 
 type ChatMsg = { role: 'user' | 'assistant'; text: string };
 
@@ -15,9 +16,18 @@ export default function Chatbot() {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const isAuth = !!(token && user);
+
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: 'assistant', text: "Welcome to the Modern Estate Concierge. I'm your AI curator. What kind of property are you looking for today? Tell me about your budget, preferred location, and bedroom count." }
+    { 
+      role: 'assistant', 
+      text: isAuth 
+        ? `Greetings, ${user?.fullName || 'User'}. I am your Fintech Compliance Assistant. I have analyzed your linked KRA PIN and recent M-Pesa transaction history. How can I help you with your taxes, payments, or compliance status today?`
+        : "Welcome to the Modern Estate Concierge. I'm your AI curator. What kind of property are you looking for today? Tell me about your budget, preferred location, and bedroom count." 
+    }
   ]);
   const [input, setInput] = useState('');
   const [houses, setHouses] = useState<any[]>([]);
@@ -42,6 +52,7 @@ export default function Chatbot() {
       const res = await sendChatMessage({
         session_id: sessionId ?? undefined,
         message,
+        persona: isAuth ? 'compliance' : 'house-hunting',
       }).unwrap();
 
       // Adjust based on the actual API response structure (checking both dats.data and direct res)
@@ -60,7 +71,9 @@ export default function Chatbot() {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err?.data?.message || err?.data?.error || 'Failed to send message.');
+      const errMsg = err?.data?.message || err?.data?.error || 'Failed to send message.';
+      setError(errMsg);
+      toast.error(errMsg);
     }
   }
 
@@ -74,15 +87,20 @@ export default function Chatbot() {
     } finally {
       setSessionId(null);
       setMessages([
-        { role: 'assistant', text: "Concierge session reset. How can I help you find your new home?" }
+        { 
+          role: 'assistant', 
+          text: isAuth 
+            ? "Compliance session reset. How can I assist with your financial or tax inquiries?"
+            : "Concierge session reset. How can I help you find your new home?"
+        }
       ]);
       setHouses([]);
     }
   }
 
   return (
-    <main className="min-h-screen pt-24 pb-12 px-6 max-w-7xl mx-auto font-body text-left">
-      <div className="flex flex-col lg:flex-row gap-12 h-[calc(100vh-160px)]">
+    <main className="min-h-screen pt-20 md:pt-24 pb-8 md:pb-12 px-4 md:px-6 max-w-7xl mx-auto font-body text-left">
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 h-auto lg:h-[calc(100vh-160px)]">
         
         {/* Chat Interface */}
         <section className="flex-1 flex flex-col bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">

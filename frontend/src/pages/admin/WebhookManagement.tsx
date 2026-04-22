@@ -16,7 +16,9 @@ const EVENT_TYPES = [
 ];
 
 export default function WebhookManagement() {
-  const { data: webhooks, isLoading } = useGetWebhooksQuery();
+  const { data: webhooks, isLoading } = useGetWebhooksQuery(undefined, {
+    pollingInterval: 5000, // 🛰️ Real-time status polling every 5s
+  });
   const [createWebhook, { isLoading: creating }] = useCreateWebhookMutation();
   const [updateWebhook] = useUpdateWebhookMutation();
   const [deleteWebhook] = useDeleteWebhookMutation();

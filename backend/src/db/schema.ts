@@ -30,6 +30,7 @@ export const accountStatusEnum = pgEnum('account_status', [
   'inactive',
   'locked',
   'pending_verification',
+  'rejected',
 ]);
 export const houseTypeEnum = pgEnum('house_type', [
   'bedsitter',

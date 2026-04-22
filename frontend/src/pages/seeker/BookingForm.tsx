@@ -81,13 +81,37 @@ export default function BookingForm() {
 
   // Form state
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card'>('mpesa');
-  // Remove country code from user's phone for display
   const [phone, setPhone] = useState(() => stripPhonePrefix(user?.phone || ''));
   const [occupants, setOccupants] = useState('1 Person');
   const [notes, setNotes] = useState('');
   const [moveInDate, setMoveInDate] = useState(location.state?.startDate || '');
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
   const [stripeBookingId, setStripeBookingId] = useState<number | null>(null);
+
+  // 🛡️ [Security] Block admins and landlords from accessing the booking flow
+  if (user?.role === 'admin' || user?.role === 'landlord') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface p-8">
+        <div className="max-w-md w-full bg-white rounded-[3rem] p-12 shadow-2xl text-center border border-slate-100">
+          <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-8">
+            <span className="material-symbols-outlined text-4xl text-slate-400">lock</span>
+          </div>
+          <h2 className="font-headline font-black text-3xl text-primary tracking-tighter italic mb-4">Access Restricted</h2>
+          <p className="text-on-surface-variant text-sm font-medium mb-8 leading-relaxed">
+            Authority nodes (Admin &amp; Landlord accounts) cannot initiate booking protocols.
+            Bookings are reserved exclusively for <strong>Seeker</strong> accounts.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="w-full bg-primary text-white py-5 rounded-full font-black text-[10px] uppercase tracking-widest border-none"
+          >
+            Return to Listings
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) return <LoadingSpinner />;
   if (!house) return <div>Property not found</div>;
@@ -171,7 +195,7 @@ export default function BookingForm() {
   return (
     <div className="bg-surface text-on-surface selection:bg-primary-fixed min-h-screen">
       {/* Editorial Header */}
-      <header className="pt-32 pb-8 px-8 md:px-16 max-w-6xl mx-auto text-left">
+      <header className="pt-24 md:pt-32 pb-8 px-4 md:px-16 max-w-6xl mx-auto text-left">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-primary mb-4 hover:opacity-70 transition-opacity"
@@ -179,15 +203,15 @@ export default function BookingForm() {
           <span className="material-symbols-outlined text-sm">arrow_back</span>
           <span className="text-xs font-bold tracking-widest uppercase">Back to Listings</span>
         </button>
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-on-surface mb-4 leading-tight">
+        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-on-surface mb-4 leading-tight">
           Secure Your <span className="text-primary-container bg-primary-fixed px-2">New Horizon.</span>
         </h1>
-        <p className="text-on-surface-variant max-w-xl text-lg leading-relaxed">
+        <p className="text-on-surface-variant max-w-xl text-base md:text-lg leading-relaxed">
           Complete your reservation for <span className="font-semibold text-on-surface">{house.title}</span>.
         </p>
       </header>
 
-      <section className="px-8 md:px-16 pb-24 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
+      <section className="px-4 md:px-16 pb-24 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 text-left">
         <div className="lg:col-span-7 space-y-12">
           {/* Booking Details */}
           <div className="space-y-8">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetHousesQuery } from '../../store/apiSlice';
 import { formatCurrency, getHouseImage } from '../../utils/helpers';
+import toast from 'react-hot-toast';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -14,11 +15,11 @@ export default function Landing() {
     houseType: ''
   });
 
-  // Fetch verified houses for the curated collections
+  // Fetch verified/active houses for the curated collections
   const { data: housesData, isLoading: housesLoading } = useGetHousesQuery({ 
     page: 1, 
     limit: 10,
-    approval_status: 'approved'
+    status: 'active'
   });
 
   const featuredListings = housesData?.items ?? [];
@@ -31,29 +32,33 @@ export default function Landing() {
     if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
     if (filters.houseType) params.append('houseType', filters.houseType);
     
+    toast.success('Analyzing regional nodes... Searching anthology.');
     navigate(`/houses?${params.toString()}`);
   };
 
   const budgetOptions = [
     { label: 'Budget Range', min: '', max: '' },
-    { label: 'KSh 5M - 15M', min: '5000000', max: '15000000' },
-    { label: 'KSh 15M - 50M', min: '15000000', max: '50000000' },
-    { label: 'KSh 50M+', min: '50000000', max: '' }
+    { label: 'KSh 5K - 30K', min: '5000', max: '30000' },
+    { label: 'KSh 30K - 100K', min: '30000', max: '100000' },
+    { label: 'KSh 100K+', min: '100000', max: '' }
   ];
 
+  // Only valid houseType enum values from the DB schema
   const assetClasses = [
     { label: 'Asset Class', value: '' },
-    { label: 'Apartment', value: 'apartment' },
+    { label: 'Studio', value: 'studio' },
+    { label: 'Bungalow', value: 'bungalow' },
     { label: 'Mansion', value: 'mansion' },
-    { label: 'Penthouse', value: 'penthouse' },
-    { label: 'Commercial', value: 'commercial' }
+    { label: '1 Bedroom', value: 'one_bedroom' },
+    { label: '2 Bedroom', value: 'two_bedroom' },
+    { label: '3 Bedroom', value: 'three_bedroom' },
   ];
 
   return (
     <div className="bg-surface font-body text-on-surface text-left">
       <main className="pt-20">
         {/* Section 1: Hero with Intelligent Search */}
-        <section className="relative min-h-[921px] flex flex-col justify-center px-8 lg:px-24 overflow-hidden">
+        <section className="relative min-h-[700px] md:min-h-[921px] flex flex-col justify-center px-4 md:px-12 lg:px-24 overflow-hidden">
           <div className="absolute inset-0 z-0 overflow-hidden">
             <img 
               alt="Luxury Villa" 
@@ -64,17 +69,17 @@ export default function Landing() {
           </div>
           
           <div className="relative z-10 max-w-4xl space-y-10">
-            <h1 className="font-headline font-extrabold text-6xl lg:text-8xl text-white tracking-tight leading-[1.1] text-left">
+            <h1 className="font-headline font-extrabold text-3xl sm:text-6xl lg:text-8xl text-white tracking-tight leading-[1.1] text-left">
               Curating Kenya’s<br/>
               <span className="bg-gradient-to-r from-primary-fixed to-white bg-clip-text text-transparent italic">Finest Estates.</span>
             </h1>
-            <p className="text-white/90 text-xl max-w-2xl font-light leading-relaxed text-left border-l-4 border-primary-fixed pl-8">
+            <p className="text-white/90 text-xs md:text-xl max-w-2xl font-light leading-relaxed text-left border-l-[3px] md:border-l-4 border-primary-fixed pl-4 md:pl-8">
               A multi-million dollar approach to African real estate. Precision-driven investments for the institutional eye, verified by Savanna Horizon.
             </p>
 
             {/* Search Banner */}
-            <form onSubmit={handleSearch} className="bg-surface-container-lowest/90 backdrop-blur-2xl p-3 rounded-3xl md:rounded-full shadow-2xl flex flex-col md:flex-row items-center gap-2 max-w-5xl mt-12 border border-white/20 text-left">
-              <div className="w-full md:w-1/3 px-8 py-3 flex items-center gap-4 border-r border-outline-variant/30 text-left">
+            <form onSubmit={handleSearch} className="bg-surface-container-lowest/90 backdrop-blur-2xl p-2 md:p-3 rounded-[2rem] md:rounded-full shadow-2xl flex flex-col md:flex-row items-stretch md:items-center gap-2 max-w-5xl mt-8 md:mt-12 border border-white/20 text-left">
+              <div className="w-full md:w-1/3 px-6 md:px-8 py-3 flex items-center gap-4 border-b md:border-b-0 md:border-r border-outline-variant/30 text-left">
                 <span className="material-symbols-outlined text-primary text-2xl">location_on</span>
                 <div className="flex flex-col flex-1 text-left">
                   <span className="text-[10px] uppercase font-black text-outline tracking-widest mb-1">Estate Location</span>
@@ -122,7 +127,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <button type="submit" className="w-full md:w-auto bg-primary text-white px-12 py-5 rounded-full font-black uppercase tracking-widest text-xs hover:bg-primary-container transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-105 border-none">
+              <button type="submit" className="w-full md:w-auto bg-primary text-white px-12 py-5 rounded-full font-black uppercase tracking-widest text-xs hover:bg-primary-container transition-all flex items-center justify-center gap-3 shadow-xl border-none">
                 <span className="material-symbols-outlined">search</span>
                 Discover
               </button>
@@ -137,35 +142,35 @@ export default function Landing() {
         </section>
 
         {/* Section 4: Trust Bar (Compliance & Payments) */}
-        <section className="py-16 bg-surface-container-low border-b border-outline-variant/10">
-          <div className="max-w-7xl mx-auto px-8 flex flex-wrap justify-center items-center gap-16 md:gap-24 text-left">
+        <section className="py-12 md:py-16 bg-surface-container-low border-b border-outline-variant/10">
+          <div className="max-w-7xl mx-auto px-6 flex flex-wrap justify-center items-center gap-8 md:gap-24 text-left">
             <div className="flex items-center gap-4 group opacity-60 hover:opacity-100 transition-opacity">
-              <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+              <div className="p-2 md:p-3 bg-white rounded-2xl shadow-sm border border-slate-100 shrink-0">
                 <span className="material-symbols-outlined text-secondary font-variation-fill" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
               </div>
-              <span className="font-headline font-black text-primary text-sm uppercase tracking-widest">GavaConnect Integrated</span>
+              <span className="font-headline font-black text-primary text-[10px] md:text-sm uppercase tracking-widest leading-tight">GavaConnect <br className="md:hidden"/>Integrated</span>
             </div>
             <div className="flex items-center gap-4 group opacity-60 hover:opacity-100 transition-opacity">
-              <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+              <div className="p-2 md:p-3 bg-white rounded-2xl shadow-sm border border-slate-100 shrink-0">
                 <span className="material-symbols-outlined text-primary font-variation-fill" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
               </div>
-              <span className="font-headline font-black text-primary text-sm uppercase tracking-widest">KRA Tax Compliant</span>
+              <span className="font-headline font-black text-primary text-[10px] md:text-sm uppercase tracking-widest leading-tight">KRA Tax <br className="md:hidden"/>Compliant</span>
             </div>
             <div className="flex items-center gap-4 group opacity-60 hover:opacity-100 transition-opacity text-left">
-              <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+              <div className="p-2 md:p-3 bg-white rounded-2xl shadow-sm border border-slate-100 shrink-0">
                 <span className="material-symbols-outlined text-green-600 font-variation-fill" style={{ fontVariationSettings: "'FILL' 1" }}>phonelink_ring</span>
               </div>
-              <span className="font-headline font-black text-primary text-sm uppercase tracking-widest text-left">M-Pesa Global Secure</span>
+              <span className="font-headline font-black text-primary text-[10px] md:text-sm uppercase tracking-widest text-left leading-tight">M-Pesa <br className="md:hidden"/>Secure</span>
             </div>
           </div>
         </section>
 
         {/* Section 3: Curated Collections (The Gallery - Wired to DB) */}
-        <section className="py-32 px-8 lg:px-24 bg-white text-left">
+        <section className="py-16 md:py-32 px-4 md:px-12 lg:px-24 bg-white text-left">
           <div className="flex flex-col md:flex-row justify-between items-end mb-24 gap-12 text-left">
             <div className="max-w-3xl text-left">
               <span className="text-secondary font-black tracking-[0.3em] uppercase text-[10px] mb-4 block">Institutional Exclusives</span>
-              <h2 className="font-headline text-5xl lg:text-7xl font-extrabold text-primary leading-tight tracking-tighter text-left">Curated High-Value<br/><span className="italic">Collections.</span></h2>
+              <h2 className="font-headline text-4xl md:text-5xl lg:text-7xl font-extrabold text-primary leading-tight tracking-tighter text-left">Curated High-Value<br/><span className="italic">Collections.</span></h2>
             </div>
             <p className="text-on-surface-variant max-w-sm mb-4 font-medium italic opacity-60 leading-relaxed text-left">
               Each property in this anthology is vetted through a 140-point institutional-grade compliance check by NestFind Kenya.
@@ -184,7 +189,7 @@ export default function Landing() {
                 {featuredListings[0] && (
                   <div 
                     onClick={() => navigate(`/houses/${featuredListings[0].houseId}`)}
-                    className="md:col-span-8 group cursor-pointer overflow-hidden rounded-[3rem] bg-surface-container-low relative aspect-[16/9] shadow-2xl shadow-primary/10 text-left"
+                    className="md:col-span-12 lg:col-span-8 group cursor-pointer overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-surface-container-low relative aspect-square sm:aspect-video lg:aspect-[16/9] shadow-2xl shadow-primary/10 text-left"
                   >
                     <img 
                       alt={featuredListings[0].title} 
@@ -197,14 +202,14 @@ export default function Landing() {
                       </span>
                       <span className="bg-primary/90 backdrop-blur-md text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Institutional Grade</span>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-12 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent text-white text-left">
+                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent text-white text-left">
                       <div className="flex justify-between items-end text-left">
                         <div className="text-left">
-                          <h3 className="font-headline text-4xl font-black mb-2 tracking-tighter italic">{featuredListings[0].title}</h3>
-                          <p className="opacity-80 font-bold text-sm tracking-widest uppercase">{featuredListings[0].location?.town || 'Nairobi'} • {formatCurrency(featuredListings[0].monthlyRent)}/mo</p>
+                          <h3 className="font-headline text-2xl md:text-4xl font-black mb-2 tracking-tighter italic leading-tight">{featuredListings[0].title}</h3>
+                          <p className="opacity-80 font-bold text-[10px] md:text-sm tracking-widest uppercase">{featuredListings[0].location?.town || 'Nairobi'} • {formatCurrency(featuredListings[0].monthlyRent)}/mo</p>
                         </div>
-                        <button className="bg-white text-primary w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-primary-fixed hover:-translate-y-1 transition-all shadow-xl group/btn">
-                          <span className="material-symbols-outlined transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1">arrow_outward</span>
+                        <button className="bg-white text-primary w-10 h-10 md:w-14 md:h-14 rounded-2xl flex items-center justify-center hover:bg-primary-fixed hover:-translate-y-1 transition-all shadow-xl group/btn shrink-0">
+                          <span className="material-symbols-outlined text-lg md:text-2xl transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1">arrow_outward</span>
                         </button>
                       </div>
                     </div>
@@ -215,7 +220,7 @@ export default function Landing() {
                 {featuredListings[1] && (
                   <div 
                     onClick={() => navigate(`/houses/${featuredListings[1].houseId}`)}
-                    className="md:col-span-4 group cursor-pointer overflow-hidden rounded-[3rem] bg-surface-container-low relative aspect-[3/4] shadow-2xl shadow-primary/10 text-left"
+                    className="md:col-span-6 lg:col-span-4 group cursor-pointer overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-surface-container-low relative aspect-square sm:aspect-[3/4] shadow-2xl shadow-primary/10 text-left"
                   >
                     <img 
                       alt={featuredListings[1].title} 
@@ -238,7 +243,7 @@ export default function Landing() {
                   <div 
                     key={house.houseId}
                     onClick={() => navigate(`/houses/${house.houseId}`)}
-                    className={`${idx === 2 ? 'md:col-span-8' : 'md:col-span-4'} group cursor-pointer overflow-hidden rounded-[3rem] bg-surface-container-low relative aspect-video shadow-xl text-left`}
+                    className={`${idx === 2 ? 'md:col-span-12 lg:col-span-8' : 'md:col-span-6 lg:col-span-4'} group cursor-pointer overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-surface-container-low relative aspect-square sm:aspect-video shadow-xl text-left`}
                   >
                      <img 
                         alt={house.title} 
@@ -257,6 +262,7 @@ export default function Landing() {
           
           <div className="mt-20 flex justify-center">
              <button 
+              type="button"
               onClick={() => navigate('/houses')}
               className="px-16 py-6 bg-slate-50 border border-slate-200 rounded-full font-black uppercase tracking-[0.4em] text-[10px] text-primary hover:bg-primary hover:text-white transition-all shadow-xl shadow-slate-200/20"
              >

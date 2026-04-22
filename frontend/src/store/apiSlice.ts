@@ -327,6 +327,36 @@ export const apiSlice = createApi({
       invalidatesTags: ['Compliance', 'User'],
     }),
 
+    // ── Tax Rules Engine ─────────────────────────────────────────────────────
+    calculateTax: builder.mutation<any, { monthlyRent: number; bookingFee?: number; isShortTermLodging?: boolean }>({
+      query: (data) => ({
+        url: '/compliance/tax/calculate',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+    getTaxRates: builder.query<any, void>({
+      query: () => '/compliance/tax/rates',
+    }),
+
+    // ── Job Queue (Offline Queue Monitor) ────────────────────────────────────
+    getJobQueue: builder.query<any, void>({
+      query: () => '/jobs',
+      providesTags: ['Job' as any],
+    }),
+    getJobStats: builder.query<any, void>({
+      query: () => '/jobs/stats',
+      providesTags: ['Job' as any],
+    }),
+    retryJob: builder.mutation<any, number>({
+      query: (jobId) => ({ url: `/jobs/${jobId}/retry`, method: 'POST' }),
+      invalidatesTags: ['Job' as any],
+    }),
+    purgeJobs: builder.mutation<any, void>({
+      query: () => ({ url: '/jobs/purge', method: 'DELETE' }),
+      invalidatesTags: ['Job' as any],
+    }),
+
     // Analytics Endpoints
     getOverviewStats: builder.query<any, any>({
       query: () => '/analytics/overview-stats',
@@ -445,4 +475,12 @@ export const {
   useCreateWebhookMutation,
   useUpdateWebhookMutation,
   useDeleteWebhookMutation,
+  // Tax Rules Engine
+  useCalculateTaxMutation,
+  useGetTaxRatesQuery,
+  // Job Queue / Offline Monitor
+  useGetJobQueueQuery,
+  useGetJobStatsQuery,
+  useRetryJobMutation,
+  usePurgeJobsMutation,
 } = apiSlice;

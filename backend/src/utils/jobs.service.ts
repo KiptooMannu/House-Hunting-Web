@@ -22,23 +22,39 @@ export const runWorker = async () => {
   logger.info('Starting Persistent Job Worker...');
 
   const processBatch = async () => {
-    // 1. Fetch jobs that are pending and ready to run
-    const pendingJobs = await db.select()
-      .from(jobs)
-      .where(and(
-        eq(jobs.status, 'pending'),
-        lt(jobs.nextRunAt, new Date())
-      ))
-      .limit(5); // Process in small batches
+    try {
+      // 1. Fetch jobs that are pending and ready to run
+      const pendingJobs = await db.select()
+        .from(jobs)
+        .where(and(
+          eq(jobs.status, 'pending'),
+          lt(jobs.nextRunAt, new Date())
+        ))
+        .limit(5); // Process in small batches
 
-    for (const job of pendingJobs) {
-      await processJob(job);
+      for (const job of pendingJobs) {
+        await processJob(job);
+      }
+    } catch (err: any) {
+      // 🛡️ Catch DB connection errors (auth timeout, pool exhaustion, etc.)
+      // so the worker NEVER crashes the entire server process.
+      logger.warn('Job worker batch failed (DB connectivity issue). Will retry next tick.', {
+        error: err?.message || String(err),
+      });
     }
   };
 
-  // Run immediately and then every 30 seconds (simulation of a queue worker)
-  setInterval(processBatch, 30000);
-  processBatch();
+  // Run immediately, then every 30 seconds
+  setInterval(() => {
+    processBatch().catch((err) => {
+      logger.warn('Job worker interval error (suppressed).', { error: err?.message });
+    });
+  }, 30000);
+
+  // Run first batch — also guarded
+  processBatch().catch((err) => {
+    logger.warn('Job worker initial batch error (suppressed).', { error: err?.message });
+  });
 };
 
 const processJob = async (job: any) => {

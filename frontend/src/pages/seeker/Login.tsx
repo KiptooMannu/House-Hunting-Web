@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useDispatch } from 'react-redux';
 import { useLoginMutation } from '../../store/apiSlice';
 import { setCredentials } from '../../store/authSlice';
+import toast from 'react-hot-toast';
 
 export default function Login() {
   const [searchParams] = useSearchParams();
@@ -16,171 +17,115 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
   const [login, { isLoading: loading }] = useLoginMutation();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     try {
       const res = await login({ email, password }).unwrap();
       const { user, accessToken, refreshToken } = res;
       if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
       dispatch(setCredentials({ user, token: accessToken }));
 
-      if (from) {
-        navigate(from, { replace: true });
-        return;
-      }
+      if (from) { navigate(from, { replace: true }); return; }
 
       const role = user.role;
       if (role === 'admin') navigate('/admin', { replace: true });
       else if (role === 'landlord') navigate('/landlord', { replace: true });
       else navigate('/houses', { replace: true });
     } catch (err: any) {
-      console.error(err);
-      setError(err?.data?.error || err?.data?.message || 'Login failed. Please check your credentials.');
+      const errMsg = err?.data?.error || err?.data?.message || 'Login failed. Please check your credentials.';
+      toast.error(errMsg);
     }
   }
 
   return (
-    <main className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4 md:p-8 lg:p-12 font-body text-on-surface">
-      <div className="max-w-[1100px] w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[700px]">
-        {/* ========== LEFT SIDE: VISUAL ANCHOR ========== */}
-        <section className="hidden lg:flex relative overflow-hidden flex-col justify-end p-16">
-          <div className="absolute inset-0 z-0 text-left">
-            <img
-              alt="Estate Anchor"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwegQ_-dj6TGfol1Le5oJ_wILGYnSO2hs-kwYaQ5WVYfgbubMrkpzvfWtnf3g6I5IhZfKJJ28q_jzrZpeYxIZeoWKOTHpkqy1bTyLxPaGGajVidTjEgxjA4ofKQJPKzLNI-U-CkKsb6pA6dBlbzsCbX6A_7QBsLlNbLiMuMdsZPh_-eR8s8a16fimCQe-5UjvNq5QF38cJW4J5jWkF5cYzBQRMSTpjNNDoyjP0oxoNDrbXiE1TRnDfZx_pJebbdVvVaP2Dvq6TM6Y"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/30 to-transparent" />
+    <main className="min-h-screen w-full relative font-body overflow-x-hidden">
+      {/* Background Image Layer */}
+      <div className="fixed inset-0 z-0">
+        <img
+          alt="Luxury Architecture"
+          className="w-full h-full object-cover"
+          src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80"
+        />
+        <div className="absolute inset-0 bg-slate-900/40" />
+      </div>
+
+      {/* Content: sits below the fixed navbar (navbar ~72px tall) */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 pt-20 pb-8">
+        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/30 p-8 md:p-10">
+
+          {/* Brand Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-black text-on-surface tracking-tight mb-1">Welcome Back</h1>
+            <p className="text-on-surface-variant text-sm mt-2">Sign in to your NestFind account.</p>
           </div>
 
-          <div className="relative z-10 max-w-sm text-left">
-            <h1 className="font-headline text-4xl md:text-5xl font-black text-white tracking-tighter leading-none mb-8 italic">
-              Defining the standard of <span className="text-secondary font-black">institutional</span> heritage.
-            </h1>
-            <div className="flex items-center gap-4">
-              <div className="h-px w-12 bg-white/30" />
-              <p className="font-bold text-white/60 text-[10px] tracking-widest uppercase">
-                Institutional Gateway
+          {/* Contextual Messages */}
+          {sessionExpired && (
+            <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+              <span className="material-symbols-outlined text-amber-500 text-lg">lock_clock</span>
+              <p className="text-amber-700 text-xs font-semibold">Your session expired. Please sign in again.</p>
+            </div>
+          )}
+
+          {showLandlordMsg && (
+            <div className="mb-6 p-3 bg-blue-50 border border-blue-100 rounded-2xl">
+              <p className="text-blue-700 text-xs font-semibold">
+                You need a Landlord account.{' '}
+                <Link to="/register?role=landlord" className="underline font-bold">Register here</Link>.
               </p>
             </div>
-          </div>
-        </section>
+          )}
 
-        {/* ========== RIGHT SIDE: LOGIN FORM ========== */}
-        <section className="flex flex-col justify-center p-10 md:p-16 lg:p-20 bg-white relative text-left">
-          <div className="w-full max-w-sm mx-auto flex flex-col">
-            <div className="mb-12">
-              <span className="text-primary font-black uppercase tracking-[0.3em] text-[10px] mb-4 block">Estate Curator Alpha</span>
-              <h2 className="font-black font-headline text-3xl text-primary mb-2 tracking-tighter">Authorize Entry</h2>
-              <p className="text-slate-400 font-bold text-xs leading-relaxed uppercase tracking-tighter italic">
-                Secure node access for premium asset curation.
-              </p>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-on-surface-variant" htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-4 text-primary font-medium focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-300 text-sm outline-none"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
-            {showLandlordMsg && (
-              <div className="p-6 bg-secondary/5 border border-secondary/10 rounded-3xl animate-in zoom-in-95 mb-8">
-                <p className="text-secondary font-black text-[10px] uppercase tracking-widest mb-1">Curator Node Required</p>
-                <p className="text-on-surface-variant text-xs font-bold leading-relaxed">
-                  To deploy listings, authorize via a curator node or{' '}
-                  <Link to="/register?role=landlord" className="text-secondary underline decoration-2 underline-offset-4 font-black">
-                    Register Protocol
-                  </Link>.
-                </p>
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-end">
+                <label className="text-xs font-bold text-on-surface-variant" htmlFor="password">Password</label>
+                <a className="text-xs font-semibold text-primary hover:underline" href="#">Forgot password?</a>
               </div>
-            )}
+              <input
+                id="password"
+                type="password"
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-4 text-primary font-medium focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-300 text-sm outline-none"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-            {sessionExpired && (
-              <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2 mb-8">
-                <span className="material-symbols-outlined text-primary">lock_clock</span>
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
-                  Protocol Lock: Session Secured
-                </p>
-              </div>
-            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-container transition-all flex items-center justify-center gap-2 text-sm mt-2"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+              {!loading && <span className="material-symbols-outlined text-sm">arrow_forward</span>}
+            </button>
+          </form>
 
-            {error && (
-              <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-black uppercase tracking-widest flex items-center gap-3">
-                 <span className="material-symbols-outlined text-sm">report</span>
-                 {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="space-y-3">
-                <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 tracking-[0.2em] uppercase" htmlFor="email">
-                  Identity Node
-                </label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-lg">alternate_email</span>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    className="w-full bg-slate-50 border-none rounded-2xl py-5 pl-14 pr-6 text-primary font-bold focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-slate-300 text-sm outline-none"
-                    placeholder="agent@domain.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-end mb-2 ml-1">
-                  <label className="block text-[10px] font-black text-slate-400 tracking-[0.2em] uppercase" htmlFor="password">
-                    Security Protocol
-                  </label>
-                  <a className="text-[9px] font-black text-primary uppercase tracking-widest hover:text-secondary transition-colors" href="#">
-                    Recover Node
-                  </a>
-                </div>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-lg">lock</span>
-                  <input
-                    id="password"
-                    type="password"
-                    required
-                    className="w-full bg-slate-50 border-none rounded-2xl py-5 pl-14 pr-6 text-primary font-bold focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-slate-300 text-sm outline-none"
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-6 space-y-6">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary text-white font-black py-6 rounded-full shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-[0.3em] text-[10px]"
-                >
-                  {loading ? 'Authenticating...' : 'Authorize Entry'}
-                  {!loading && <span className="material-symbols-outlined text-sm">arrow_forward</span>}
-                </button>
-
-                <div className="flex items-center gap-4 py-2">
-                  <div className="h-[1px] flex-1 bg-slate-100" />
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">
-                    Register Protocol
-                  </span>
-                  <div className="h-[1px] flex-1 bg-slate-100" />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/register')}
-                  className="w-full bg-white text-primary font-black py-4 rounded-full border border-slate-100 hover:bg-slate-50 transition-all text-[9px] uppercase tracking-widest"
-                >
-                  Deploy New Identity Node
-                </button>
-              </div>
-            </form>
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p className="text-slate-500 text-sm">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-primary font-bold hover:underline">Register</Link>
+            </p>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );

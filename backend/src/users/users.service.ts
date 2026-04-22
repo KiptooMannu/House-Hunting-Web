@@ -85,7 +85,41 @@ export const listUsers = async (query: any) => {
   }
   const order = sql`${sql.raw(orderColumn)} ${sql.raw(sortOrder)}`;
 
-  const items = await db.select().from(users).where(whereClause).orderBy(order).limit(limit).offset(offset);
+  // For Landlords: Revenue from their houses
+  // For Seekers: Revenue they paid
+  const items = await db.select({
+    userId: users.userId,
+    fullName: users.fullName,
+    email: users.email,
+    phone: users.phone,
+    role: users.role,
+    accountStatus: users.accountStatus,
+    profileImage: users.profileImage,
+    kraPin: users.kraPin,
+    nationalId: users.nationalId,
+    createdAt: users.createdAt,
+    totalBookings: users.totalBookings,
+    totalListings: users.totalListings,
+    totalRevenue: sql<string>`COALESCE(
+      CASE 
+        WHEN ${users.role} = 'landlord' THEN (
+          SELECT SUM(p.amount) FROM payments p 
+          JOIN bookings b ON p.booking_id = b.booking_id 
+          JOIN houses h ON b.house_id = h.house_id 
+          WHERE h.landlord_id = ${users.userId} AND p.status = 'completed'
+        )
+        WHEN ${users.role} = 'seeker' THEN (
+          SELECT SUM(amount) FROM payments WHERE payer_id = ${users.userId} AND status = 'completed'
+        )
+        ELSE 0 
+      END, 0)::numeric`
+  })
+  .from(users)
+  .where(whereClause)
+  .orderBy(order)
+  .limit(limit)
+  .offset(offset);
+
   const totalResult = await db.select({ count: sql<number>`count(*)` }).from(users).where(whereClause);
   const total = totalResult[0]?.count ?? 0;
 

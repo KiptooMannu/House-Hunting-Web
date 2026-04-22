@@ -202,13 +202,48 @@ export default function MyManagedBookings() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex justify-end gap-4">
-                      <button className="px-8 py-4 rounded-2xl text-on-surface-variant font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200">
+                    {/* Detailed Financial Manifest — Transparency Layer */}
+                    <div className="mt-2 bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <span>Financial Summary</span>
+                        <span className="text-primary italic">Statement #L-{booking.bookingId}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Gross Rent Portion</p>
+                          <p className="text-sm font-black text-primary italic">{formatCurrency(Number(booking.totalPrice) - Number(booking.bookingFee))}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">MRI Tax (7.5%)</p>
+                          <p className="text-sm font-black text-red-500 italic">-{formatCurrency((Number(booking.totalPrice) - Number(booking.bookingFee)) * 0.075)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Platform Fee Portion</p>
+                          <p className="text-sm font-black text-primary italic">{formatCurrency(booking.bookingFee)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">VAT (16%) on Fee</p>
+                          <p className="text-sm font-black text-red-500 italic">-{formatCurrency(Number(booking.bookingFee) * 0.16)}</p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">Net Payout to Landlord</span>
+                        <span className="text-lg font-black text-emerald-600 italic">
+                          {formatCurrency(
+                            (Number(booking.totalPrice) - Number(booking.bookingFee)) * 0.925 + 
+                            (Number(booking.bookingFee) * 0.84)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 flex justify-end gap-4">
+                      <button className="px-8 py-4 rounded-2xl text-on-surface-variant font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 cursor-pointer">
                         Reschedule
                       </button>
-                      <button className="bg-primary px-10 py-4 rounded-2xl text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center gap-3">
-                        View Intel
-                        <span className="material-symbols-outlined text-sm opacity-40">arrow_forward</span>
+                      <button className="bg-primary px-10 py-4 rounded-2xl text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 hover:scale-[1.05] active:scale-95 transition-all flex items-center gap-3 cursor-pointer">
+                        View Statement
+                        <span className="material-symbols-outlined text-sm opacity-40">receipt</span>
                       </button>
                     </div>
                   </div>

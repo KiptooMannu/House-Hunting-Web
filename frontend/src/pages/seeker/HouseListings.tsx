@@ -14,10 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import toast from 'react-hot-toast';
 
 export default function HouseListings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { user } = useSelector((state: RootState) => state.auth);
   const { data: townsData } = useGetTownsQuery(undefined);
   
@@ -76,6 +78,7 @@ export default function HouseListings() {
     params.page = '1'; // Reset to page 1 on new filter
     
     setSearchParams(params);
+    toast.success('Filtering complete. Discovering new nodes.');
   }
 
   function handleFilterReset() {
@@ -88,17 +91,18 @@ export default function HouseListings() {
       houseType: ''
     });
     setPage(1);
+    toast.success('Filters reset to zero-state.');
   }
 
   return (
-    <main className="pt-32 pb-24 px-8 lg:px-12 max-w-[1700px] mx-auto min-h-screen font-body text-left">
-      <div className="flex flex-col lg:flex-row gap-16 text-left">
+    <main className="pt-24 md:pt-32 pb-16 md:pb-24 px-4 md:px-8 lg:px-12 max-w-[1700px] mx-auto min-h-screen font-body text-left">
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 text-left">
         {/* Filter Sidebar - High-Fidelity Savanna Style */}
-        <aside className="w-full lg:w-[350px] flex-shrink-0 space-y-10 text-left">
+        <aside className={`w-full lg:w-[350px] flex-shrink-0 space-y-10 text-left lg:block ${isFilterOpen ? 'block' : 'hidden'}`}>
           <div className="bg-white p-10 rounded-[3rem] shadow-2xl shadow-primary/5 border border-slate-100 text-left sticky top-32">
             <div className="flex justify-between items-center mb-10 text-left">
-              <h2 className="text-2xl font-black text-primary font-headline italic tracking-tighter">Refine Search</h2>
-              <button onClick={handleFilterReset} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Reset</button>
+              <h2 className="text-xl md:text-2xl font-black text-primary font-headline italic tracking-tighter">Refine Search</h2>
+              <button onClick={handleFilterReset} className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Reset</button>
             </div>
             
             {/* Master Search */}
@@ -151,11 +155,18 @@ export default function HouseListings() {
             <div className="mb-10 text-left">
               <label className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/30 mb-4 block">Asset Class</label>
               <div className="flex flex-wrap gap-2 text-left">
-                {['apartment', 'mansion', 'penthouse', 'commercial'].map(type => (
+                {[
+                  { label: 'Studio',    value: 'studio' },
+                  { label: 'Bungalow',  value: 'bungalow' },
+                  { label: 'Mansion',   value: 'mansion' },
+                  { label: '1 Bed',     value: 'one_bedroom' },
+                  { label: '2 Bed',     value: 'two_bedroom' },
+                  { label: '3 Bed',     value: 'three_bedroom' },
+                ].map(({ label, value }) => (
                   <button 
-                    key={type}
+                    key={value}
                     onClick={() => {
-                      const newValue = filters.houseType === type ? '' : type;
+                      const newValue = filters.houseType === value ? '' : value;
                       setFilters({...filters, houseType: newValue});
                       const newParams = new URLSearchParams(searchParams);
                       if (newValue) newParams.set('houseType', newValue);
@@ -164,10 +175,10 @@ export default function HouseListings() {
                       setSearchParams(newParams);
                     }}
                     className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
-                      filters.houseType === type ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                      filters.houseType === value ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
                     }`}
                   >
-                    {type}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -201,13 +212,24 @@ export default function HouseListings() {
 
         {/* Results Area */}
         <section className="flex-1 text-left">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8 text-left">
-            <div className="text-left">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-secondary mb-4 block">Curated Anthology</span>
-              <h1 className="text-5xl lg:text-7xl font-extrabold text-primary tracking-tighter italic leading-none mb-4 text-left">
-                 Kenyan Estates.
-              </h1>
-              <p className="text-on-surface-variant text-sm font-medium italic opacity-60">Displaying {total} institutional-grade residential clusters found within chosen parameters.</p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-16 gap-4 md:gap-8 text-left">
+            <div className="flex items-center justify-between w-full md:w-auto gap-4">
+              <div className="text-left">
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-secondary mb-4 block">Curated Anthology</span>
+                <h1 className="text-3xl md:text-5xl lg:text-7xl font-extrabold text-primary tracking-tighter italic leading-none mb-2 md:mb-4 text-left">
+                   Kenyan Estates.
+                </h1>
+                <p className="text-on-surface-variant text-xs md:text-sm font-medium italic opacity-60">Displaying {total} institutional-grade residential clusters found within chosen parameters.</p>
+              </div>
+              {/* Mobile filter toggle */}
+              <button
+                type="button"
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="lg:hidden flex-shrink-0 flex items-center gap-2 px-5 py-4 bg-white border border-slate-100 rounded-2xl text-primary font-black text-[9px] uppercase tracking-widest shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">tune</span>
+                Filter
+              </button>
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import type { RootState } from '../../store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import NotificationBell from '../../components/NotificationBell';
 import PageExit from '../../components/PageExit';
+import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -25,18 +26,17 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     dispatch(logoutAction());
+    toast.success('Admin session terminated.');
     navigate('/login');
   };
 
   const navItems = [
-    { id: 'overview', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'approvals', label: 'Pending Approvals', icon: 'pending_actions' },
-    { id: 'properties', label: 'Managed Properties', icon: 'domain' },
-    { id: 'landlords', label: 'Landlord Registry', icon: 'group' },
-    { id: 'seekers', label: 'Citizen Registry', icon: 'person_search' },
-    { id: 'compliance', label: 'Gava Compliance', icon: 'verified_user' },
-    { id: 'webhooks', label: 'Webhook Bridges', icon: 'hub' },
-    { id: 'audit', label: 'Audit Logs', icon: 'assignment_late' },
+    { id: 'overview', label: 'Overview', icon: 'dashboard' },
+    { id: 'approvals', label: 'Verification Queue', icon: 'verified' },
+    { id: 'properties', label: 'Real Estate Hub', icon: 'domain' },
+    { id: 'landlords', label: 'User Management', icon: 'group' },
+    { id: 'compliance', label: 'KRA Compliance', icon: 'verified_user' },
+    { id: 'audit', label: 'Security Vault', icon: 'assignment_late' },
   ];
 
   if (profileLoading) return (
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
         </nav>
 
         <div className="px-4 mb-6">
-          <button className="w-full py-3.5 px-4 bg-primary text-white rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all border-none cursor-pointer">
+          <button type="button" className="w-full py-3.5 px-4 bg-primary text-white rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-primary/20 border-none cursor-pointer">
             Internal Audit
           </button>
         </div>
@@ -134,8 +134,8 @@ export default function AdminDashboard() {
               />
             </div>
             <div className="flex items-center gap-3 md:gap-4 text-slate-500">
-              <NotificationBell />
-              <button className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors border-none bg-transparent outline-none p-1.5 hidden xs:flex">dark_mode</button>
+               <NotificationBell />
+               <button className="material-symbols-outlined cursor-pointer hover:text-primary transition-colors border-none bg-transparent outline-none p-1.5 hidden lg:flex">dark_mode</button>
             </div>
             <div className="flex items-center gap-2 md:gap-3 border-l pl-3 md:pl-6 border-slate-200">
               <div className="text-right hidden sm:block">

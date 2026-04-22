@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-50 dark:bg-slate-950 w-full py-24 border-t border-slate-200/50 dark:border-slate-800 font-body text-left">
-      <div className="max-w-[1700px] mx-auto px-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-20">
+    <footer className="bg-slate-50 dark:bg-slate-950 w-full py-16 md:py-24 border-t border-slate-200/50 dark:border-slate-800 font-body text-left">
+      <div className="max-w-[1700px] mx-auto px-6 md:px-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 md:gap-20">
           {/* Brand Column */}
           <div className="space-y-8 text-left">
             <Link to="/" className="text-2xl font-black text-primary dark:text-blue-400 font-headline italic tracking-tighter">

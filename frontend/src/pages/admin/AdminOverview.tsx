@@ -1,7 +1,7 @@
 import { useGetOverviewStatsQuery, useGetAdminStatsQuery, useListAuditLogsQuery, useGetHousesQuery } from '../../store/apiSlice';
 import { format } from 'date-fns';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   AreaChart, Area
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
@@ -39,38 +39,67 @@ export default function AdminOverview() {
         <div>
           <span className="text-secondary font-black text-[10px] tracking-[0.2em] uppercase">Executive Intelligence</span>
           <h1 className="text-4xl font-black tracking-tighter mt-1 text-primary font-headline uppercase leading-none">Command Overview</h1>
-          <p className="text-on-surface-variant mt-4 max-w-2xl font-body leading-relaxed text-sm font-bold">
-            Aggregated system intelligence and high-level performance metrics for Savanna Horizon Kenya. Monitor institutional growth and compliance status in real-time.
+          <p className="text-on-surface-variant mt-4 max-w-2xl font-body leading-relaxed text-sm font-bold opacity-70">
+            Welcome to Savanna Horizon. Below is your 3-step operations roadmap.
           </p>
         </div>
-        <div className="flex gap-4">
-           <div className="flex -space-x-3">
-             <div className="w-10 h-10 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center font-black text-xs text-primary shadow-sm overflow-hidden"><img src="https://i.pravatar.cc/150?u=1" alt="user" className="w-full h-full object-cover" /></div>
-             <div className="w-10 h-10 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center font-black text-xs text-primary shadow-sm overflow-hidden"><img src="https://i.pravatar.cc/150?u=2" alt="user" className="w-full h-full object-cover" /></div>
-             <div className="w-10 h-10 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center font-black text-xs text-primary shadow-sm overflow-hidden"><img src="https://i.pravatar.cc/150?u=3" alt="user" className="w-full h-full object-cover" /></div>
-             <div className="w-10 h-10 rounded-full border-4 border-white bg-primary text-white flex items-center justify-center font-black text-[10px] shadow-sm">+8</div>
+      </section>
+
+      {/* Admin Mission Path — 3 Step Lifecycle */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+         {[
+           { step: '01', title: 'Registry', desc: 'Approve new Landlords', count: overview?.pendingApprovals || 0, path: '/admin/approvals', icon: 'how_to_reg' },
+           { step: '02', title: 'Inventory', desc: 'Verify house listings', count: pendingHouses?.length || 0, path: '/admin/properties', icon: 'home_work' },
+           { step: '03', title: 'Revenue', desc: 'Monitor KRA Compliance', count: 'Active', path: '/admin/compliance', icon: 'monitoring' }
+         ].map((path, idx) => (
+           <div 
+            key={idx}
+            onClick={() => navigate(path.path)}
+            className="group bg-white p-6 rounded-[2.5rem] border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-primary hover:text-white transition-all duration-500 shadow-sm"
+           >
+             <div className="flex items-center gap-5">
+                <div className="bg-slate-50 group-hover:bg-white/10 w-12 h-12 rounded-2xl flex items-center justify-center">
+                   <span className="material-symbols-outlined text-primary group-hover:text-white text-xl">{path.icon}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-black opacity-50 block uppercase tracking-widest">STEP {path.step}</span>
+                  <p className="text-sm font-black uppercase tracking-tight">{path.title}</p>
+                  <p className={`text-[10px] font-bold ${idx === 2 ? 'text-secondary group-hover:text-white' : 'text-slate-400 group-hover:text-white/70'} italic`}>{path.desc}</p>
+                </div>
+             </div>
+             <div className="text-right">
+                <p className="text-lg font-black tracking-tighter">{path.count}</p>
+                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Awaiting</p>
+             </div>
            </div>
-           <div className="text-right">
-             <p className="text-xs font-black text-primary tracking-tight">Active Agents</p>
-             <p className="text-[10px] font-black text-secondary uppercase tracking-[0.1em]">System Healthy</p>
-           </div>
-        </div>
+         ))}
       </section>
 
       {/* Primary Metrics Layer */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {metrics.map((stat, i) => (
-          <div key={i} className="group bg-white p-8 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-50 flex flex-col justify-between h-48">
+          <div 
+            key={i} 
+            onClick={() => {
+               if (stat.label === 'System Transactions') navigate('/admin/audit');
+               if (stat.label === 'Active Inventory') navigate('/admin/properties');
+               if (stat.label === 'Pending Approvals') navigate('/admin/approvals');
+               if (stat.label === 'Total Landlords') navigate('/admin/landlords');
+            }}
+            className="group bg-white p-8 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-50 flex flex-col justify-between h-48 cursor-pointer active:scale-95"
+          >
             <div className="flex justify-between items-start">
               <div className={`p-3 rounded-2xl ${stat.color === 'primary' ? 'bg-primary/5 text-primary' : stat.color === 'error' ? 'bg-error/5 text-error' : 'bg-secondary/5 text-secondary'} group-hover:scale-110 transition-transform`}>
                 <span className="material-symbols-outlined text-2xl">{stat.icon}</span>
               </div>
-              <span className="material-symbols-outlined text-slate-200 group-hover:text-primary transition-colors cursor-pointer">north_east</span>
+              <span className="material-symbols-outlined text-slate-200 group-hover:text-primary transition-colors">north_east</span>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{stat.label}</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-primary tracking-tighter">{stat.value}</span>
+                <span className="text-3xl font-black text-primary tracking-tighter tracking-tighter">
+                  {stat.label === 'System Transactions' ? 'KES ' : ''}{stat.value}
+                </span>
                 <span className={`text-[10px] font-black uppercase tracking-widest ${stat.label === 'Pending Approvals' && overview?.pendingApprovals > 0 ? 'text-error animate-pulse' : 'text-secondary'}`}>
                   {stat.sub}
                 </span>

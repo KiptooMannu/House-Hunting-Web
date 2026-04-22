@@ -7,6 +7,7 @@ import type { RootState } from '../../store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import NotificationBell from '../../components/NotificationBell';
 import PageExit from '../../components/PageExit';
+import toast from 'react-hot-toast';
 
 export default function LandlordDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -25,6 +26,7 @@ export default function LandlordDashboard() {
 
   const handleLogout = () => {
     dispatch(logoutAction());
+    toast.success('Protocol closed. Securely logged out.');
     navigate('/login');
   };
 
@@ -33,8 +35,7 @@ export default function LandlordDashboard() {
     { id: 'bookings', label: 'Active Bookings', icon: 'calendar_today' },
     { id: 'properties', label: 'My Listings', icon: 'domain' },
     { id: 'revenue', label: 'Financials', icon: 'account_balance_wallet' },
-    { id: 'compliance', label: 'Compliance', icon: 'verified_user' },
-    { id: 'intelligence', label: 'Intelligence Hub', icon: 'insights' },
+    { id: 'compliance', label: 'Compliance Hub', icon: 'verified_user' },
   ];
 
   if (profileLoading) return (
@@ -89,17 +90,7 @@ export default function LandlordDashboard() {
         </nav>
 
         <div className="p-6">
-          <div className="bg-primary p-6 rounded-[2rem] relative overflow-hidden shadow-2xl shadow-primary/20 hidden lg:block">
-            <div className="relative z-10 text-white">
-              <h4 className="font-black font-headline text-[10px] uppercase tracking-widest mb-2 opacity-60">Intelligence Pack</h4>
-              <p className="text-[10px] font-medium leading-relaxed mb-4 opacity-90">Unlock regional hot-zones and seasonal yield patterns.</p>
-              <button className="w-full bg-white text-primary text-[10px] font-black uppercase tracking-[0.2em] py-2.5 rounded-xl hover:bg-blue-50 transition-all border-none cursor-pointer">
-                Activate
-              </button>
-            </div>
-          </div>
-          
-          <div className="mt-6 flex items-center gap-3 bg-slate-50/80 p-3 rounded-[1.75rem] border border-slate-100">
+          <div className="flex items-center gap-3 bg-slate-50/80 p-3 rounded-[1.75rem] border border-slate-100">
             <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm shrink-0">
               <AvatarImage src={profile?.avatar} />
               <AvatarFallback className="bg-primary text-white font-bold">{profile?.fullName?.charAt(0)}</AvatarFallback>
@@ -134,7 +125,7 @@ export default function LandlordDashboard() {
               </button>
               <PageExit />
               <h2 className="text-xl md:text-3xl font-black tracking-tighter text-primary font-headline capitalize italic truncate">
-                {activeTab.replace('-', ' ')}
+                {activeTab.replace(/-/g, ' ')}
               </h2>
             </div>
             <div className="flex items-center gap-3 md:gap-8 shrink-0">
@@ -145,9 +136,10 @@ export default function LandlordDashboard() {
                  </button>
               </div>
               <button 
+                type="button"
                 onClick={() => navigate('/landlord/create-listing')}
                 disabled={profile?.accountStatus !== 'active'}
-                className={`bg-primary text-white px-4 md:px-10 h-12 md:h-16 rounded-2xl md:rounded-[1.25rem] font-black text-[9px] md:text-[10px] uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl shadow-primary/20 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3 shrink-0 border-none cursor-pointer ${profile?.accountStatus !== 'active' ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+                className={`bg-primary text-white px-4 md:px-10 h-12 md:h-16 rounded-2xl md:rounded-[1.25rem] font-black text-[9px] md:text-[10px] uppercase tracking-[0.1em] md:tracking-[0.3em] shadow-2xl shadow-primary/20 hover:scale-[1.01] active:scale-100 transition-all flex items-center justify-center gap-2 md:gap-3 shrink-0 border-none cursor-pointer ${profile?.accountStatus !== 'active' ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
               >
                 <span className="material-symbols-outlined text-sm">add_circle</span>
                 <span className="hidden xs:inline">New Node</span>
@@ -158,7 +150,7 @@ export default function LandlordDashboard() {
 
         {/* Verification Banner: Only show if KRA PIN is missing or account is inactive */}
         {(!profile?.kraPin || profile?.accountStatus !== 'active') && (
-          <div className="mx-12 mt-8 p-10 bg-secondary/5 border border-secondary/20 rounded-[3rem] shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10 animate-in slide-in-from-top-4 duration-700">
+          <div className="mx-4 md:mx-12 mt-4 md:mt-8 p-6 md:p-10 bg-secondary/5 border border-secondary/20 rounded-[2rem] md:rounded-[3rem] shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6 md:gap-10 animate-in slide-in-from-top-4 duration-700">
             <div className="flex items-center gap-8">
               <div className="w-16 h-16 bg-secondary rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shrink-0">
                 <span className="material-symbols-outlined text-4xl">verified_user</span>
@@ -169,8 +161,9 @@ export default function LandlordDashboard() {
               </div>
             </div>
             <button 
+              type="button"
               onClick={() => navigate('/landlord/compliance')}
-              className="px-10 py-5 bg-secondary text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-secondary/20 border-none shrink-0"
+              className="px-10 py-5 bg-secondary text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-[1.01] active:scale-100 transition-all shadow-xl shadow-secondary/20 border-none shrink-0"
             >
               Verify Identity
             </button>
@@ -178,12 +171,12 @@ export default function LandlordDashboard() {
         )}
 
         {/* Content Area */}
-        <div className="py-12 px-12 flex-1 max-w-[1400px] mx-auto w-full">
+        <div className="py-6 md:py-12 px-4 md:px-12 flex-1 max-w-[1400px] mx-auto w-full">
             <Outlet />
         </div>
 
         {/* Footer: Hardened Layout */}
-        <footer className="w-full py-16 px-12 border-t border-slate-100 bg-[#FBFCFD] mt-auto">
+        <footer className="w-full py-8 md:py-16 px-4 md:px-12 border-t border-slate-100 bg-[#FBFCFD] mt-auto">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 text-left mb-16">
               <div className="space-y-6">
@@ -231,8 +224,9 @@ export default function LandlordDashboard() {
         {/* Floating AI Assistant */}
         <div className="fixed bottom-10 right-10 z-50">
           <button 
+            type="button"
             onClick={() => navigate('/landlord/concierge')}
-            className="h-16 w-16 bg-primary text-white rounded-[1.5rem] shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative border border-white/20"
+            className="h-16 w-16 bg-primary text-white rounded-[1.5rem] shadow-2xl flex items-center justify-center hover:scale-[1.05] active:scale-100 transition-all group relative border border-white/20"
           >
             <span className="material-symbols-outlined text-2xl" style={{fontVariationSettings: "'FILL' 1"}}>smart_toy</span>
             <span className="absolute -top-1 -right-1 flex h-5 w-5">

@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useGetHousesQuery, useRevokeHouseMutation } from '../../store/apiSlice';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -6,8 +7,18 @@ import { useState } from 'react';
 
 export default function AdminManagedProperties() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const landlordId = searchParams.get('landlordId');
+  
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  const { data, isLoading, refetch } = useGetHousesQuery({ status: 'active' });
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState(''); // empty for all
+
+  const { data, isLoading, refetch } = useGetHousesQuery({ 
+    status: statusFilter || undefined, 
+    search: search || undefined,
+    landlordId: landlordId || undefined 
+  });
   const [revokeHouse, { isLoading: isRevoking }] = useRevokeHouseMutation();
 
   const handleRevoke = async (houseId: number) => {
@@ -36,11 +47,30 @@ export default function AdminManagedProperties() {
       {/* Header Section */}
       <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <span className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-black">Institutional Inventory</span>
-          <h2 className="text-4xl font-black tracking-tight text-primary font-headline uppercase tracking-tighter">Managed Properties</h2>
-          <p className="text-on-surface-variant max-w-2xl font-body leading-relaxed text-sm font-bold">
-            Comprehensive oversight of all active property assets across the network. Manage visibility and institutional compliance.
-          </p>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-black">Property Manager</span>
+            {landlordId && (
+              <span className="bg-secondary/10 text-secondary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-2">
+                <span className="material-symbols-outlined text-xs">filter_list</span>
+                Filter is On
+              </span>
+            )}
+          </div>
+          <h2 className="text-4xl font-black tracking-tight text-primary font-headline uppercase tracking-tighter">All Properties</h2>
+          <div className="flex items-center gap-4">
+             <p className="text-on-surface-variant max-w-2xl font-body leading-relaxed text-sm font-bold opacity-70">
+               Manage all the houses listed on the site. You can check details or remove properties if needed.
+             </p>
+             {landlordId && (
+               <button 
+                onClick={() => setSearchParams({})}
+                className="text-[10px] font-black text-secondary uppercase tracking-widest hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer"
+               >
+                 <span className="material-symbols-outlined text-sm">close</span>
+                 Show All
+               </button>
+             )}
+          </div>
         </div>
         <div className="flex gap-4">
           <div className="bg-surface-container-low px-6 py-4 rounded-3xl flex items-center gap-6 border border-slate-100 shadow-sm">
@@ -59,9 +89,22 @@ export default function AdminManagedProperties() {
 
       {/* Table View for Detailed Data */}
       <section className="bg-white rounded-[2rem] p-10 overflow-hidden border border-slate-50 shadow-sm">
-        <div className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-6">
-            <h3 className="text-2xl font-black tracking-tighter text-primary uppercase">Granular Performance Index</h3>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
+          <div className="flex items-center gap-6 w-full md:w-auto">
+            <h3 className="text-2xl font-black tracking-tighter text-primary uppercase whitespace-nowrap">Asset Index</h3>
+            
+            {/* Live Search Bar */}
+            <div className="relative group w-full md:w-80">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors">search</span>
+              <input 
+                type="text" 
+                placeholder="Search Title, Town, or Landlord..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-xs font-bold text-primary outline-none focus:ring-4 focus:ring-primary/5 transition-all"
+              />
+            </div>
+
             <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-1">
               <Toggle 
                 pressed={viewMode === 'table'} 
@@ -81,13 +124,38 @@ export default function AdminManagedProperties() {
               </Toggle>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button className="p-3 rounded-2xl bg-surface-container-low text-slate-600 hover:text-primary transition-all border-none cursor-pointer">
-              <span className="material-symbols-outlined">download</span>
-            </button>
-            <button className="p-3 rounded-2xl bg-surface-container-low text-slate-600 hover:text-primary transition-all border-none cursor-pointer">
-              <span className="material-symbols-outlined">print</span>
-            </button>
+
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+             {/* Verification Filters */}
+             <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
+                {[
+                  { id: '', label: 'All', icon: 'all_inclusive' },
+                  { id: 'active', label: 'Verified', icon: 'verified' },
+                  { id: 'pending_approval', label: 'Unverified', icon: 'pending' },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setStatusFilter(f.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-none cursor-pointer ${
+                      statusFilter === f.id ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-primary'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-xs">{f.icon}</span>
+                    {f.label}
+                  </button>
+                ))}
+             </div>
+
+            <div className="h-8 w-px bg-slate-100 hidden md:block mx-2"></div>
+
+            <div className="flex gap-2">
+              <button className="p-3 rounded-2xl bg-surface-container-low text-slate-600 hover:text-primary transition-all border-none cursor-pointer">
+                <span className="material-symbols-outlined">download</span>
+              </button>
+              <button className="p-3 rounded-2xl bg-surface-container-low text-slate-600 hover:text-primary transition-all border-none cursor-pointer">
+                <span className="material-symbols-outlined">print</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -128,9 +196,20 @@ export default function AdminManagedProperties() {
                         </div>
                       </td>
                       <td className="px-6 py-5 text-sm font-black text-slate-600 border-y border-transparent group-hover:border-slate-100">{house.location?.town || 'Unknown'}</td>
-                      <td className="px-6 py-5 text-sm font-black text-primary border-y border-transparent group-hover:border-slate-100 uppercase">{house.landlord?.fullName || `LL-${house.landlordId}`}</td>
+                      <td className="px-6 py-5 text-sm font-black text-primary border-y border-transparent group-hover:border-slate-100 uppercase">
+                        <button 
+                          onClick={() => navigate(`/admin/landlords/${house.landlordId}`)}
+                          className="bg-transparent border-none p-0 cursor-pointer text-primary font-black hover:underline uppercase text-xs"
+                        >
+                          {house.landlord?.fullName || `LL-${house.landlordId}`}
+                        </button>
+                      </td>
                       <td className="px-6 py-5 text-center border-y border-transparent group-hover:border-slate-100">
-                        <span className="bg-secondary/10 text-secondary text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">Active</span>
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          house.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {house.status === 'active' ? 'Verified' : house.status?.replace('_', ' ')}
+                        </span>
                       </td>
                       <td className="px-6 py-5 text-right font-black text-base text-primary tracking-tighter border-y border-transparent group-hover:border-slate-100">
                         {Number(house.monthlyRent).toLocaleString()}
@@ -185,7 +264,11 @@ export default function AdminManagedProperties() {
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary uppercase">{house.landlord?.fullName?.charAt(0)}</div>
                         <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{house.landlord?.fullName}</span>
                      </div>
-                     <span className="bg-secondary/10 text-secondary text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">Verified Active</span>
+                     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+                       house.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                     }`}>
+                       {house.status === 'active' ? 'Verified Active' : 'Pending Review'}
+                     </span>
                   </div>
                   <div className="flex gap-2">
                     <button 

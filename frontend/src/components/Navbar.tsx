@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/authSlice';
@@ -11,22 +12,24 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const { user, isAuth } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
+    toast.success('Session terminated safely.');
     navigate('/login');
   };
 
   interface NavLink {
     name: string;
     path: string;
-    role?: string | string[];
   }
 
   const navLinks: NavLink[] = [
@@ -39,12 +42,20 @@ export default function Navbar() {
   const isAdminOrLandlord = user?.role === 'landlord' || user?.role === 'admin';
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-3xl border-b border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-500">
-      <nav className="flex justify-between items-center px-8 lg:px-12 py-5 max-w-full mx-auto w-full">
-        <div className="flex items-center gap-16">
-          <Link to="/" className="text-2xl font-black tracking-tighter text-primary dark:text-blue-400 font-headline uppercase italic">
+    <header className="fixed top-0 w-full z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border-b border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-500">
+      <nav className="flex justify-between items-center px-6 md:px-12 py-5 max-w-[1600px] mx-auto w-full">
+        <div className="flex items-center gap-6 md:gap-16">
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2 text-primary hover:bg-slate-50 rounded-xl transition-colors border-none bg-transparent outline-none"
+          >
+            <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+          </button>
+          
+          <Link to="/" className="text-xl md:text-2xl font-black tracking-tighter text-primary dark:text-blue-400 font-headline uppercase italic shrink-0">
             NestFind<span className="font-light opacity-50 not-italic">Kenya</span>
           </Link>
+
           <div className="hidden lg:flex items-center gap-10">
             {navLinks.map((link) => (
               <Link
@@ -62,9 +73,9 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 md:gap-8">
           {!isAuth ? (
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4 md:gap-8">
               <button 
                 onClick={() => navigate('/login')}
                 className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary transition-all bg-transparent border-none outline-none"
@@ -72,26 +83,27 @@ export default function Navbar() {
                 Login
               </button>
               <button 
+                type="button"
                 onClick={() => navigate('/register')}
-                className="px-8 py-3 bg-primary hover:bg-primary-container text-white text-[10px] font-black uppercase tracking-widest rounded-full transition-all transform active:scale-95 shadow-lg shadow-primary/20 border-none"
+                className="px-6 md:px-8 py-2.5 md:py-3 bg-primary hover:bg-primary-container text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full transition-all shadow-lg shadow-primary/20 border-none"
               >
-                Create Account
+                Register
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 md:gap-6">
                <button 
                 onClick={() => navigate(isAdminOrLandlord ? '/landlord/overview' : '/user/overview')}
-                className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all border-none"
+                className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all border-none"
               >
                 <span className="material-symbols-outlined text-sm">dashboard</span>
-                Dashboard
+                Console
               </button>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-3 p-1 rounded-full hover:bg-slate-50 transition-all outline-none border-none bg-transparent group">
-                    <Avatar className="h-11 w-11 border-4 border-white shadow-xl ring-1 ring-slate-100 group-hover:ring-primary/20 transition-all">
+                  <button className="flex items-center gap-3 p-0.5 rounded-full hover:bg-slate-50 transition-all outline-none border-none bg-transparent group">
+                    <Avatar className="h-10 w-10 md:h-11 md:w-11 border-2 md:border-4 border-white shadow-xl ring-1 ring-slate-100 group-hover:ring-primary/20 transition-all">
                       <AvatarImage src={(user as any)?.avatar} className="object-cover" />
                       <AvatarFallback className="bg-primary text-white font-black italic">{(user as any)?.fullName?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
@@ -137,6 +149,65 @@ export default function Navbar() {
           )}
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`lg:hidden fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        <div 
+          className={`absolute right-0 top-0 h-full w-[80%] max-w-sm bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-500 ease-out p-8 flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center mb-12">
+            <span className="text-xl font-black text-primary italic">Menu.</span>
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 -mr-2 bg-slate-50 dark:bg-slate-800 rounded-xl border-none"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col space-y-6 flex-grow">
+            {navLinks.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-2xl font-black text-primary dark:text-white tracking-tighter italic border-b border-slate-50 dark:border-slate-800 pb-4 transition-all hover:pl-2"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-auto space-y-4 pt-8">
+            <button 
+              onClick={() => { navigate('/login'); setIsMobileMenuOpen(false); }}
+              className="w-full py-5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-primary dark:text-white font-black uppercase tracking-widest text-xs border-none"
+            >
+              System Login Access
+            </button>
+            {!isAuth ? (
+              <button 
+                onClick={() => { navigate('/register'); setIsMobileMenuOpen(false); }}
+                className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-xs border-none shadow-xl"
+              >
+                Create Account
+              </button>
+            ) : (
+              <button 
+                onClick={() => { navigate(isAdminOrLandlord ? '/landlord/overview' : '/user/overview'); setIsMobileMenuOpen(false); }}
+                className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-xs border-none shadow-xl"
+              >
+                Go to Dashboard
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
     </header>
   );
 }

@@ -150,17 +150,16 @@ export default function SeekerDirectory() {
             <thead>
               <tr className="bg-slate-50/50">
                 <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Citizen Profile</th>
-                <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">National ID</th>
+                <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Revenue Impact</th>
                 <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
                 <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Activity</th>
-                <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Joined</th>
                 <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Authorization</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-10 py-20 text-center">
+                  <td colSpan={5} className="px-10 py-20 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Syncing IPRS Gateway...</p>
@@ -170,22 +169,22 @@ export default function SeekerDirectory() {
               ) : seekers.map((seeker: any) => (
                 <tr key={seeker.userId} className="group hover:bg-slate-50/50 transition-colors">
                   <td className="px-10 py-8">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-left">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-primary text-lg shadow-inner overflow-hidden uppercase">
                         {seeker.profileImage ? (
                           <img src={seeker.profileImage} className="w-full h-full object-cover" alt="" />
                         ) : seeker.fullName.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-black text-primary text-base tracking-tight uppercase">{seeker.fullName}</p>
-                        <p className="text-[10px] text-slate-400 font-bold">{seeker.email}</p>
+                        <p className="font-black text-primary text-base tracking-tight uppercase leading-none">{seeker.fullName}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1 lowercase">{seeker.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-10 py-8">
-                    <div className="flex flex-col">
-                      <p className="text-xs font-black text-primary font-mono tracking-widest">{seeker.nationalId || 'NOT_REGISTERED'}</p>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Republic of Kenya</p>
+                    <div className="flex flex-col text-left">
+                      <p className="font-black text-primary text-sm tracking-tight">KES {Number(seeker.totalRevenue || 0).toLocaleString()}</p>
+                      <p className="text-[9px] text-secondary font-black uppercase tracking-tighter">Gross Contribution</p>
                     </div>
                   </td>
                   <td className="px-10 py-8 text-center">
@@ -201,11 +200,8 @@ export default function SeekerDirectory() {
                     </span>
                   </td>
                   <td className="px-10 py-8 text-right">
-                    <p className="text-sm font-black text-primary">{seeker.totalBookings || 0}</p>
+                    <p className="text-sm font-black text-primary leading-none">{seeker.totalBookings || 0}</p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Verified Bookings</p>
-                  </td>
-                  <td className="px-10 py-8">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{format(new Date(seeker.createdAt), 'MMM dd, yyyy')}</p>
                   </td>
                   <td className="px-10 py-8 text-center">
                     {seeker.accountStatus !== 'active' ? (

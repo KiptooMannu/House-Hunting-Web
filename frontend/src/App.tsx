@@ -35,13 +35,11 @@ import MyManagedBookings from './pages/landlord/MyManagedBookings';
 import MyManagedProperties from './pages/landlord/MyManagedProperties';
 import MpesaLedger from './pages/landlord/MpesaLedger';
 import ComplianceModule from './pages/landlord/ComplianceModule';
-import IntelligenceHub from './pages/landlord/IntelligenceHub';
-import AIConcierge from './pages/landlord/AIConcierge';
-import CreateListing from './pages/landlord/CreateListing';
-import TestEndpoints from './pages/landlord/TestEndpoints';
 import MarketInsights from './pages/landlord/MarketInsights';
 import LandlordOnboarding from './pages/landlord/LandlordOnboarding';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
+import AIConcierge from './pages/landlord/AIConcierge';
+import CreateListing from './pages/landlord/CreateListing';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -54,6 +52,7 @@ import AdminCompliance from './pages/admin/AdminCompliance';
 import SeekerDirectory from './pages/admin/SeekerDirectory';
 import AdminSettings from './pages/admin/AdminSettings';
 import WebhookManagement from './pages/admin/WebhookManagement';
+import LandlordDetail from './pages/admin/LandlordDetail';
 
 export default function App() {
   const { pathname } = useLocation();
@@ -63,7 +62,7 @@ export default function App() {
   const isLandlordPage = pathname.startsWith('/landlord');
   const isAdminPage = pathname.startsWith('/admin');
   const isUserDashboard = pathname.startsWith('/user');
-  const isHiddenPage = isAuthPage || isLandlordPage || isAdminPage || isUserDashboard;
+  const isHiddenPage = isLandlordPage || isAdminPage || isUserDashboard;
 
   return (
     <div className="app-shell flex flex-col min-h-screen text-left">
@@ -131,6 +130,7 @@ export default function App() {
             <Route path="approvals" element={<VerificationQueue />} />
             <Route path="properties" element={<AdminManagedProperties />} />
             <Route path="landlords" element={<LandlordDirectory />} />
+            <Route path="landlords/:id" element={<LandlordDetail />} />
             <Route path="seekers" element={<SeekerDirectory />} />
             <Route path="audit" element={<AuditLogs />} />
             <Route path="compliance" element={<AdminCompliance />} />
@@ -151,13 +151,10 @@ export default function App() {
             <Route path="properties" element={<MyManagedProperties />} />
             <Route path="revenue" element={<MpesaLedger />} />
             <Route path="compliance" element={<ComplianceModule />} />
-            <Route path="intelligence" element={<IntelligenceHub />} />
             <Route path="concierge" element={<AIConcierge />} />
             <Route path="settings" element={<Settings />} />
             <Route path="create-listing" element={<CreateListing />} />
           </Route>
-          
-          <Route path="/test-api" element={<ProtectedRoute allowedRoles={['admin']}><TestEndpoints /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

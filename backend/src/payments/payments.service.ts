@@ -418,21 +418,28 @@ import { webhooks } from '../db/schema.js';
 import { and } from 'drizzle-orm';
 
 export async function dispatchWebhook(eventType: string, payload: any) {
-  const activeHooks = await db.select()
-    .from(webhooks)
-    .where(and(eq(webhooks.eventType, eventType), eq(webhooks.isActive, true)));
-
-  for (const hook of activeHooks) {
-    await db.insert(jobs).values({
-      type: 'webhook_dispatch',
-      payload: {
-        url: hook.url,
-        secret: hook.secret,
-        eventType,
-        data: payload,
-        timestamp: new Date().toISOString()
-      },
-      status: 'pending'
+  try {
+    const activeHooks = await db.select()
+      .from(webhooks)
+      .where(and(eq(webhooks.eventType, eventType), eq(webhooks.isActive, true)));
+  
+    for (const hook of activeHooks) {
+      await db.insert(jobs).values({
+        type: 'webhook_dispatch',
+        payload: {
+          url: hook.url,
+          secret: hook.secret,
+          eventType,
+          data: payload,
+          timestamp: new Date().toISOString()
+        },
+        status: 'pending'
+      });
+    }
+  } catch (err) {
+    logger.warn('Webhook dispatch skipped: Outbound system partially initialized', { 
+      eventType, 
+      error: err instanceof Error ? err.message : String(err) 
     });
   }
 }

@@ -7,6 +7,7 @@ import { useGetProfileQuery } from '../../store/apiSlice';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import NotificationBell from '../../components/NotificationBell';
 import PageExit from '../../components/PageExit';
+import toast from 'react-hot-toast';
 
 export default function UserDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -34,6 +35,7 @@ export default function UserDashboard() {
 
   const handleLogout = () => {
     dispatch(logoutAction());
+    toast.success('Identity node detached. Securely logged out.');
     navigate('/login');
   };
 
@@ -137,7 +139,7 @@ export default function UserDashboard() {
               <div className="flex items-center gap-3 md:gap-8">
                 <div className="flex gap-1 md:gap-2">
                    <NotificationBell />
-                   <button className="p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all hidden xs:flex">
+                   <button className="p-3 bg-slate-50 rounded-2xl text-slate-500 hover:text-primary hover:shadow-md transition-all hidden lg:flex">
                       <span className="material-symbols-outlined text-xl">tune</span>
                    </button>
                 </div>
@@ -146,7 +148,7 @@ export default function UserDashboard() {
                   className="bg-primary text-white px-4 md:px-8 h-12 md:h-14 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.03] active:scale-95 duration-200 transition-all flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">auto_awesome</span>
-                  <span className="hidden sm:inline">Concierge</span>
+                  <span className="hidden xs:inline">Concierge</span>
                 </button>
               </div>
             </div>

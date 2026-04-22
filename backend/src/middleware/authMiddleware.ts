@@ -22,6 +22,22 @@ export const authMiddleware = async (c: Context, next: Next) => {
   }
 };
 
+export const optionalAuthMiddleware = async (c: Context, next: Next) => {
+  const authHeader = c.req.header('Authorization');
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const payload = verifyAccessToken(token);
+      c.set('userId', payload.userId);
+      c.set('userRole', payload.role);
+    } catch (error: any) {
+      // Silently ignore if token is invalid
+    }
+  }
+  await next();
+};
+
 // Admin middleware – checks if the authenticated user has role 'admin'
 export const adminMiddleware = async (c: Context, next: Next) => {
   const role = c.get('userRole');

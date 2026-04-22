@@ -1,20 +1,32 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useListUsersQuery, useVerifyKraMutation } from '../../store/apiSlice';
 import { toast } from 'react-hot-toast';
 import { formatCurrency } from '../../utils/helpers';
 
 export default function LandlordDirectory() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const { data, isLoading } = useListUsersQuery({ role: 'landlord', search });
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending_verification' | 'rejected'>('all');
+  
+  const { data, isLoading } = useListUsersQuery({ 
+    role: 'landlord', 
+    search, 
+    accountStatus: statusFilter === 'all' ? undefined : statusFilter 
+  });
+  
   const [verifyKra, { isLoading: isVerifying }] = useVerifyKraMutation();
 
   const handleVerifyKRA = async (userId: number, kraPin: string) => {
-    if (!kraPin) {
-      toast.error('No KRA PIN provided for this landlord.');
-      return;
+    let pinToVerify = kraPin;
+    if (!pinToVerify) {
+      const manualPin = window.prompt('No PIN on file. Please enter the Landlord\'s KRA PIN manually:');
+      if (!manualPin) return;
+      pinToVerify = manualPin;
     }
+    
     try {
-      await verifyKra({ userId, kraPin }).unwrap();
+      await verifyKra({ userId, kraPin: pinToVerify }).unwrap();
       toast.success('KRA PIN verified and account activated.');
     } catch (err: any) {
       toast.error(err.data?.error || 'Verification failed.');
@@ -73,11 +85,33 @@ export default function LandlordDirectory() {
           <h2 className="text-4xl font-black tracking-tight mt-1 text-primary font-headline">Landlord Directory</h2>
         </div>
         <div className="flex gap-4">
-          <div className="flex bg-surface-container p-1 rounded-full items-center border border-outline-variant/20 shadow-sm">
-            <button className="px-6 py-2 rounded-full bg-white text-primary font-black text-xs uppercase tracking-widest shadow-sm">Active</button>
-            <button className="px-6 py-2 rounded-full text-on-surface-variant font-black text-xs uppercase tracking-widest hover:text-primary opacity-60">Archived</button>
+          <div className="flex bg-slate-100 p-1.5 rounded-full items-center border border-slate-200/50 shadow-inner">
+            <button 
+              onClick={() => setStatusFilter('all')}
+              className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${statusFilter === 'all' ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-primary'}`}
+            >
+              All Users
+            </button>
+            <button 
+              onClick={() => setStatusFilter('active')}
+              className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${statusFilter === 'active' ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-primary'}`}
+            >
+              Verified
+            </button>
+            <button 
+              onClick={() => setStatusFilter('pending_verification')}
+              className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${statusFilter === 'pending_verification' ? 'bg-white text-amber-500 shadow-sm' : 'text-slate-400 hover:text-amber-500'}`}
+            >
+              Unverified
+            </button>
+            <button 
+              onClick={() => setStatusFilter('rejected')}
+              className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${statusFilter === 'rejected' ? 'bg-error text-white shadow-sm' : 'text-slate-400 hover:text-error'}`}
+            >
+              Fraud Flagged
+            </button>
           </div>
-          <button className="flex items-center gap-3 bg-tertiary text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg active:scale-95">
+          <button className="flex items-center gap-3 bg-primary text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg active:scale-95 border-none">
             <span className="material-symbols-outlined text-sm">person_add</span>
             Register New
           </button>
@@ -184,15 +218,25 @@ export default function LandlordDirectory() {
               {landlords.map((landlord: any) => (
                 <tr key={landlord.userId} className="hover:bg-slate-50/80 transition-all group">
                   <td className="px-10 py-6">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-left cursor-pointer group" onClick={() => navigate(`/admin/landlords/${landlord.userId}`)}>
                       {landlord.profileImage ? (
-                        <img src={landlord.profileImage} className="w-12 h-12 rounded-2xl object-cover shadow-sm" alt="" />
+                        <img src={landlord.profileImage} className="w-14 h-14 rounded-2xl object-cover shadow-sm ring-1 ring-slate-100 group-hover:ring-primary/40 transition-all" alt="" />
                       ) : (
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black shadow-inner">
-                          {landlord.fullName?.[0]}
+                        <div className="w-14 h-14 rounded-2xl bg-primary-fixed flex items-center justify-center font-black text-primary text-xl shadow-inner uppercase group-hover:bg-primary group-hover:text-white transition-all">
+                          {landlord.fullName.charAt(0)}
                         </div>
                       )}
                       <div>
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 ${
+                          landlord.accountStatus === 'active' 
+                            ? 'bg-secondary/10 text-secondary' 
+                            : landlord.accountStatus === 'rejected'
+                            ? 'bg-error/10 text-error animate-pulse'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${landlord.accountStatus === 'active' ? 'bg-secondary animate-pulse' : landlord.accountStatus === 'rejected' ? 'bg-error' : 'bg-slate-400'}`}></span>
+                          {landlord.accountStatus === 'rejected' ? 'Fraud Violation' : landlord.accountStatus.replace('_', ' ')}
+                        </span>
                         <p className="font-black text-on-surface text-sm uppercase tracking-tight">{landlord.fullName}</p>
                         <p className="text-[10px] text-on-surface-variant font-bold opacity-60">{landlord.email}</p>
                       </div>
@@ -221,10 +265,18 @@ export default function LandlordDirectory() {
                   </td>
                   <td className="px-10 py-6 text-right">
                     <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                      <button className="w-10 h-10 flex items-center justify-center text-primary hover:bg-primary-fixed rounded-xl transition-all shadow-sm">
+                      <button 
+                         onClick={() => navigate(`/admin/landlords/${landlord.userId}`)}
+                         className="w-10 h-10 flex items-center justify-center text-primary hover:bg-primary hover:text-white rounded-xl transition-all shadow-sm border-none bg-transparent cursor-pointer"
+                         title="View Profile"
+                      >
                         <span className="material-symbols-outlined text-lg">visibility</span>
                       </button>
-                      <button className="w-10 h-10 flex items-center justify-center text-primary hover:bg-primary-fixed rounded-xl transition-all shadow-sm">
+                      <button 
+                        onClick={() => toast.success(`Starting chat with ${landlord.fullName}...`, { icon: '💬' })}
+                        className="w-10 h-10 flex items-center justify-center text-secondary hover:bg-secondary hover:text-white rounded-xl transition-all shadow-sm border-none bg-transparent cursor-pointer"
+                        title="Send Message"
+                      >
                         <span className="material-symbols-outlined text-lg">chat</span>
                       </button>
                     </div>
@@ -250,30 +302,35 @@ export default function LandlordDirectory() {
 
       {/* Floating AI Assistant Bubble */}
       <div className="fixed bottom-10 right-10 z-[60] flex flex-col items-end gap-6">
-        <div className="bg-white/90 backdrop-blur-2xl p-6 rounded-[2rem] rounded-br-sm shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-outline-variant/10 max-w-xs animate-in slide-in-from-bottom-5 duration-700">
-           <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-secondary-container flex items-center justify-center text-secondary shadow-inner">
-                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest">Horizon Assistant</p>
-                <p className="text-[9px] font-bold text-secondary uppercase tracking-tight">Active Analysis</p>
-              </div>
-           </div>
-           <p className="text-sm text-on-surface leading-normal font-medium">
-              I've detected <span className="text-secondary font-black">{landlords.filter((l: any) => l.accountStatus !== 'active' && l.kraPin).length} unverified</span> KRA PINs. Would you like me to initiate a batch verification protocol with GavaConnect?
-           </p>
-           <div className="mt-6 flex gap-3">
-              <button 
-                onClick={handleBatchVerify}
-                className="text-[10px] font-black uppercase tracking-widest bg-primary text-white px-5 py-2.5 rounded-full hover:scale-105 transition-all shadow-lg"
-              >
-                Start Protocol
-              </button>
-              <button className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant bg-slate-100 px-5 py-2.5 rounded-full hover:bg-slate-200 transition-all">Dismiss</button>
-           </div>
-        </div>
-        <button className="w-16 h-16 rounded-[1.5rem] bg-primary-container text-white shadow-2xl flex items-center justify-center hover:rotate-12 hover:scale-110 transition-all border-none cursor-pointer">
+        {landlords.filter((l: any) => l.accountStatus !== 'active').length > 0 && (
+          <div className="bg-white/90 backdrop-blur-2xl p-6 rounded-[2rem] rounded-br-sm shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-outline-variant/10 max-w-xs animate-in slide-in-from-bottom-5 duration-700">
+             <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-secondary-container flex items-center justify-center text-secondary shadow-inner">
+                  <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest">Horizon Assistant</p>
+                  <p className="text-[9px] font-bold text-secondary uppercase tracking-tight">Active Analysis</p>
+                </div>
+             </div>
+             <p className="text-sm text-on-surface leading-normal font-medium text-left">
+                I've detected <span className="text-secondary font-black">{landlords.filter((l: any) => l.accountStatus !== 'active').length} unverified</span> credentials. Would you like me to initiate a batch verification protocol for those with PINs on file?
+             </p>
+             <div className="mt-6 flex gap-3">
+                <button 
+                  onClick={handleBatchVerify}
+                  className="text-[10px] font-black uppercase tracking-widest bg-primary text-white px-5 py-2.5 rounded-full hover:scale-105 transition-all shadow-lg border-none"
+                >
+                  Start Protocol
+                </button>
+                <button className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant bg-slate-100 px-5 py-2.5 rounded-full hover:bg-slate-200 transition-all border-none">Dismiss</button>
+             </div>
+          </div>
+        )}
+        <button 
+          onClick={() => toast('Command Overlay Active: [Mass Nudge | Export | Scan]', { icon: '⚡' })}
+          className="w-16 h-16 rounded-[1.5rem] bg-primary text-white shadow-2xl flex items-center justify-center hover:rotate-12 hover:scale-110 transition-all border-none cursor-pointer"
+        >
           <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
         </button>
       </div>

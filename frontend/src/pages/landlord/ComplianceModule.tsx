@@ -5,8 +5,10 @@ import {
   useGetComplianceLogsQuery,
   useVerifyComplianceMutation,
   useGetRevenueQuery,
-  useGetHousesQuery
+  useGetHousesQuery,
+  useCalculateTaxMutation,
 } from '../../store/apiSlice';
+import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 
@@ -23,6 +25,10 @@ export default function ComplianceModule() {
   
   const { data: logsData, isLoading: logsLoading } = useGetComplianceLogsQuery({});
   const [verifyCompliance, { isLoading: isVerifying }] = useVerifyComplianceMutation();
+  const [calculateTax, { isLoading: isTaxCalc }] = useCalculateTaxMutation();
+  
+  const [taxRent, setTaxRent] = useState('');
+  const [taxResult, setTaxResult] = useState<any>(null);
   
   const logs = logsData || [];
   const loading = logsLoading;
@@ -69,6 +75,14 @@ export default function ComplianceModule() {
         message: err?.data?.message || err?.message || 'Verification service unavailable. Please try again later.',
       });
     }
+  };
+
+  const handleQuickTax = async () => {
+    if (!taxRent) { toast.error('Enter a monthly rent to calculate.'); return; }
+    try {
+      const res = await calculateTax({ monthlyRent: Number(taxRent), bookingFee: 1500 }).unwrap();
+      setTaxResult(res);
+    } catch { toast.error('Tax calculation failed.'); }
   };
 
   return (
@@ -151,12 +165,13 @@ export default function ComplianceModule() {
                 {/* NEW: Verify Compliance Button & Result */}
                 <div className="mt-4 pt-4 border-t border-slate-200">
                   <button
+                    type="button"
                     onClick={handleVerifyCompliance}
                     disabled={isVerifying || !profile?.kraPin}
-                    className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all ${
+                    className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
                       isVerifying || !profile?.kraPin
-                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                        : 'bg-primary text-white hover:bg-primary-dark shadow-md'
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-none shadow-none'
+                        : 'bg-primary text-white hover:bg-slate-900 shadow-xl border-none cursor-pointer active:scale-100'
                     }`}
                   >
                     {isVerifying ? (
@@ -328,8 +343,59 @@ export default function ComplianceModule() {
         </div>
       </div>
 
+      {/* Quick Tax Calculator Widget */}
+      <div className="mt-16 bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-secondary mb-1">KRA Tax Rules Engine</p>
+            <h3 className="text-2xl font-black text-primary tracking-tighter uppercase">Quick Tax Calculator</h3>
+            <p className="text-sm text-slate-400 font-medium italic mt-2">MRI 7.5% · VAT 16% · WHT 10% · Tourism Levy 2%</p>
+          </div>
+          <div className="flex gap-3 items-center">
+            <input
+              type="number"
+              placeholder="Monthly rent (KES)"
+              value={taxRent}
+              onChange={e => setTaxRent(e.target.value)}
+              className="bg-slate-50 border border-slate-100 rounded-2xl py-4 px-6 text-sm font-bold text-primary outline-none focus:ring-4 focus:ring-primary/10 w-52"
+            />
+            <button
+              onClick={handleQuickTax}
+              disabled={isTaxCalc}
+              className="bg-primary text-white px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest border-none cursor-pointer hover:opacity-90 flex items-center gap-2 flex-shrink-0"
+            >
+              <span className={`material-symbols-outlined text-sm ${isTaxCalc ? 'animate-spin' : ''}`}>
+                {isTaxCalc ? 'autorenew' : 'calculate'}
+              </span>
+              Calculate
+            </button>
+          </div>
+        </div>
+        {taxResult && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
+            {[
+              { label: 'Gross Rent',      value: `KES ${Number(taxResult.monthlyRent).toLocaleString()}`,         bg: 'bg-slate-50' },
+              { label: 'Total Tax',       value: `KES ${Number(taxResult.totalMonthlyTax).toLocaleString()}`,     bg: 'bg-red-50 text-red-700' },
+              { label: 'Platform Fee',    value: `KES ${Number(taxResult.platformFee).toLocaleString()}`,         bg: 'bg-orange-50 text-orange-700' },
+              { label: 'Net to You',      value: `KES ${Number(taxResult.netToLandlordMonthly).toLocaleString()}`,bg: 'bg-emerald-50 text-emerald-700' },
+            ].map(({ label, value, bg }) => (
+              <div key={label} className={`${bg} rounded-2xl p-6`}>
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-2">{label}</p>
+                <p className="font-black text-lg tracking-tighter">{value}</p>
+              </div>
+            ))}
+            <p className="col-span-2 md:col-span-4 text-[10px] text-slate-400 font-medium italic">
+              Effective rate: <strong>{taxResult.effectiveRatePercent}%</strong> · 
+              WHT: <strong>{taxResult.isWithholdingApplicable ? 'Applicable (annual &gt; KES 144K)' : 'Exempt'}</strong> · 
+              Annual tax: <strong>KES {Number(taxResult.totalAnnualTax).toLocaleString()}</strong>
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Insights Section */}
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+
         <div className="md:col-span-2 bg-surface-container-low rounded-[2rem] p-10 flex flex-col md:flex-row gap-10 items-center border border-slate-100">
           <div className="flex-1 text-left">
             <h3 className="font-headline text-3xl font-black text-primary mb-4 leading-tight italic tracking-tighter decoration-secondary decoration-4 underline underline-offset-8 mb-8">

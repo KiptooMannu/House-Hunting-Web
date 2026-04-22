@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import * as sessionService from './chatbot.service.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 import { createChatbotSessionSchema, updateChatbotSessionSchema, sessionIdParam } from '../validators/validators.js';
 
 export const createSession = async (c: Context) => {
@@ -61,8 +62,19 @@ export const deleteSession = async (c: Context) => {
 
 export const sendMessage = async (c: Context) => {
   try {
-    const { message } = await c.req.json();
-    const response = await sessionService.getChatResponse(message);
+    const { message, persona } = await c.req.json();
+    const userId = c.get('userId');
+
+    let response;
+    if (persona === 'compliance' || userId) {
+      if (!userId && persona === 'compliance') {
+        response = { reply: "I see you're asking a compliance-related question, but I can't access your specific records because you aren't logged in securely. Please sign in to see your transaction and tax status." };
+      } else {
+        response = await sessionService.getComplianceAssistantResponse(userId, message);
+      }
+    } else {
+      response = await sessionService.getChatResponse(message);
+    }
     return c.json({ data: response }, 200);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
